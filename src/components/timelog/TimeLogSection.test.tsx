@@ -47,6 +47,12 @@ describe("TimeLogSection", () => {
     expect(screen.queryByText("No entries yet")).not.toBeInTheDocument();
   });
 
+  it("fetches remote entries on mount even without local entries", () => {
+    const fetchRemoteEntries = vi.fn();
+    render(<TimeLogSection {...baseProps} fetchRemoteEntries={fetchRemoteEntries} />);
+    expect(fetchRemoteEntries).toHaveBeenCalled();
+  });
+
   it("renders MonthView when entries exist", () => {
     render(<TimeLogSection {...baseProps} entries={[entry]} />);
     expect(screen.queryByText("No entries yet")).not.toBeInTheDocument();
