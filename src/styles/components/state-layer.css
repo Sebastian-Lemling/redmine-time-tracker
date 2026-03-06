@@ -1,0 +1,233 @@
+/* ============================================================================
+   M3 STATE & INTERACTION UTILITIES
+   ============================================================================ */
+
+.md-state-layer {
+  position: relative;
+  overflow: hidden;
+}
+.md-state-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.md-state-layer:hover::after {
+  opacity: var(--md-state-hover-opacity);
+}
+.md-state-layer:active::after {
+  opacity: var(--md-state-press-opacity);
+}
+.md-state-layer:focus-visible::after {
+  opacity: var(--md-state-focus-opacity);
+}
+
+.md-interactive {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    color var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    box-shadow var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    opacity var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    transform var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.md-interactive::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.md-interactive:hover::after {
+  opacity: var(--md-state-hover-opacity);
+}
+.md-interactive:active::after {
+  opacity: var(--md-state-press-opacity);
+}
+.md-interactive:active {
+  transform: scale(0.97);
+}
+
+.md-disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+/* Compact icon button (steppers, inline controls) — no scale, neutral hover */
+.md-icon-btn-compact {
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+.md-icon-btn-compact:hover {
+  background-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.md-icon-btn-compact:active {
+  background-color: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+
+/* ============================================================================
+   M3 ICON BUTTON — 40px touch target, proper state layers
+   Variants: standard, tonal, filled, outlined
+   ============================================================================ */
+
+.md-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.md-icon-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.md-icon-btn:hover::after {
+  opacity: var(--md-state-hover-opacity);
+}
+.md-icon-btn:active::after {
+  opacity: var(--md-state-press-opacity);
+}
+.md-icon-btn:focus-visible::after {
+  opacity: var(--md-state-focus-opacity);
+}
+
+.md-icon-btn--standard {
+  background: transparent;
+  color: var(--color-on-surface-variant);
+}
+.md-icon-btn--tonal {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+.md-icon-btn--filled {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.md-icon-btn--outlined {
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  border: 1px solid var(--color-outline);
+}
+
+/* ============================================================================
+   M3 TEXT BUTTON — inline with icon
+   ============================================================================ */
+
+.md-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 20px;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.md-text-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.md-text-btn:hover::after {
+  opacity: var(--md-state-hover-opacity);
+}
+.md-text-btn:active::after {
+  opacity: var(--md-state-press-opacity);
+}
+.md-text-btn:focus-visible::after {
+  opacity: var(--md-state-focus-opacity);
+}
+
+/* ============================================================================
+   M3 CARD INTERACTIVE
+   ============================================================================ */
+
+.md-card-interactive {
+  transition:
+    background-color 150ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* M3 Icon Button — on-primary variant (for primary-colored banners) */
+.md-icon-btn--on-primary {
+  background: color-mix(in srgb, var(--color-on-primary) 16%, transparent);
+  color: inherit;
+}
+.md-icon-btn--on-primary:hover::after {
+  opacity: 0.08;
+}
+.md-icon-btn--on-primary:active::after {
+  opacity: 0.12;
+}
+
+/* M3 Icon Button — on-primary-container variant (for primary-container banners) */
+.md-icon-btn--on-primary-container {
+  background: color-mix(in srgb, var(--color-on-primary-container) 16%, transparent);
+  color: inherit;
+}
+.md-icon-btn--on-primary-container:hover::after {
+  opacity: 0.08;
+}
+.md-icon-btn--on-primary-container:active::after {
+  opacity: 0.12;
+}
+
+/* Refreshing state for header icon button */
+.md-icon-btn--refreshing {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  pointer-events: none;
+}
+.refresh-spin {
+  animation: refresh-spin 1s linear infinite;
+}
+
+/* Tabular numbers for time displays */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Dark mode overrides --- */
+
+[data-theme="dark"] .md-card-interactive {
+  --md-field-surface: var(--md-card-surface);
+}

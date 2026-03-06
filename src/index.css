@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   MATERIAL DESIGN 3 — DESIGN TOKEN SYSTEM
+   Google-quality M3 implementation with Google Blue primary palette.
+   ============================================================================ */
+
+@theme {
+  /* --- Font families --- */
+  --font-sans: "Inter", "Roboto", system-ui, -apple-system, sans-serif;
+  --font-mono: "Roboto Mono", "IBM Plex Mono", monospace;
+
+  /* --- Primary --- */
+  --color-primary: #1a73e8;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #d3e3fd;
+  --color-on-primary-container: #062e6f;
+
+  /* --- Secondary --- */
+  --color-secondary: #00897b;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #b2dfdb;
+  --color-on-secondary-container: #00332e;
+
+  /* --- Tertiary --- */
+  --color-tertiary: #f9a825;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #ffecb3;
+  --color-on-tertiary-container: #3e2800;
+
+  /* --- Error --- */
+  --color-error: #d93025;
+  --color-on-error: #ffffff;
+  --color-error-container: #fce8e6;
+  --color-on-error-container: #601410;
+
+  /* --- Surface hierarchy --- */
+  --color-surface-dim: #dde3ea;
+  --color-surface: #ffffff;
+  --color-surface-bright: #f8f9fa;
+  --color-surface-variant: #f1f3f4;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f8f9fa;
+  --color-surface-container: #f1f3f4;
+  --color-surface-container-high: #e8eaed;
+  --color-surface-container-highest: #dadce0;
+
+  /* --- On-surface --- */
+  --color-on-surface: #1f1f1f;
+  --color-on-surface-variant: #5f6368;
+
+  /* --- Outline --- */
+  --color-outline: #dadce0;
+  --color-outline-variant: #e8eaed;
+
+  /* --- Inverse --- */
+  --color-inverse-surface: #303134;
+  --color-inverse-on-surface: #e8eaed;
+  --color-inverse-primary: #a8c7fa;
+
+  /* --- Scrim --- */
+  --color-scrim: #000000;
+
+  /* --- Status colors --- */
+  --color-success: #34a853;
+  --color-on-success: #ffffff;
+  --color-success-container: #e6f4ea;
+  --color-on-success-container: #0d652d;
+
+  --color-warning: #f9a825;
+  --color-on-warning: #ffffff;
+  --color-warning-container: #fef7e0;
+  --color-on-warning-container: #3e2800;
+
+  /* --- Shape tokens --- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+}
+
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./styles/typography.css";
+@import "./styles/animations.css";
+@import "./styles/components/elevation.css";
+@import "./styles/components/state-layer.css";
+@import "./styles/components/timer-stepper.css";
+@import "./styles/components/chip-menu.css";
+@import "./styles/components/assignee-menu.css";
+@import "./styles/components/project-filter.css";
+@import "./styles/components/card.css";
+@import "./styles/components/booking-form.css";
+@import "./styles/components/timelog.css";
+@import "./styles/components/dialog.css";
+@import "./styles/components/search.css";
+@import "./styles/components/datepicker.css";
+@import "./styles/components/select.css";
+@import "./styles/components/profile-menu.css";
+@import "./styles/components/snackbar.css";
+@import "./styles/components/toolbar.css";
+@import "./styles/components/progress-ring.css";
+@import "./styles/accessibility.css";

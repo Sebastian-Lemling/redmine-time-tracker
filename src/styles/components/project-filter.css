@@ -1,0 +1,57 @@
+/* Project Filter — horizontal badge bar (wraps to multiple rows) */
+.project-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+}
+
+.project-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.project-filter-badge:hover {
+  background: color-mix(in srgb, var(--color-on-surface-variant) 8%, transparent);
+}
+.project-filter-badge--active {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  border-color: var(--color-primary-container);
+}
+.project-filter-badge--active:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-on-primary-container) 8%,
+    var(--color-primary-container)
+  );
+}
+
+.project-filter-badge__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.project-filter-badge__count {
+  color: var(--color-on-surface-variant);
+  font-size: 11px;
+}
+.project-filter-badge--active .project-filter-badge__count {
+  color: inherit;
+  opacity: 0.7;
+}

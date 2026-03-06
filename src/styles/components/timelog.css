@@ -1,0 +1,1677 @@
+/* Week table row hover */
+.week-table-row:hover {
+  background-color: var(--color-surface-container-lowest);
+}
+
+/* ============================================================================
+   ZEITERFASSUNG — Calendar Grid (M3 Google-quality)
+   ============================================================================ */
+
+/* Master-detail layout — fixed height, never jumps */
+/* Outer shell — tinted background, Google Workspace pattern */
+.cal-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-surface);
+  border-radius: 16px;
+  border: 1px solid var(--color-outline-variant);
+  gap: 0;
+}
+
+/* Two-panel row — sits inside the outer shell */
+.cal-layout__body {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+}
+
+/* Calendar panel — left, individual rounding */
+.cal-layout__calendar {
+  flex: 0 1 55%;
+  min-width: 0;
+  border-right: 1px solid var(--color-outline-variant);
+}
+
+/* Navigation bar — [←] Title [→] [Heute] */
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 12px 8px;
+}
+.cal-nav__btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.cal-nav__btn:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  color: var(--color-on-surface);
+}
+.cal-nav__btn:active {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+/* Title — centered visual anchor */
+.cal-nav__title {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  color: var(--color-on-surface);
+  text-align: center;
+  white-space: nowrap;
+}
+.cal-nav__today {
+  margin-left: auto;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 1px solid var(--color-outline);
+  background: transparent;
+  color: var(--color-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+.cal-nav__today:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-outline));
+}
+.cal-nav__today:active {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border-color: var(--color-primary);
+}
+
+/* Calendar container — individual panel with own rounding */
+.cal-container {
+  background: var(--color-surface);
+  border-right: none;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px 0 0 0;
+}
+
+/* Day-of-week header */
+.cal-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.cal-header__day {
+  padding: 10px 0;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+
+/* Week row — flex: 1 so rows share space evenly within container */
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid var(--color-outline-variant);
+  flex: 1 1 0px;
+  min-height: 0;
+}
+
+/* Cell base — day top-left, hours bottom-right, bar at floor */
+.cal-cell {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  border: none;
+  border-right: 1px solid var(--color-outline-variant);
+  background: var(--color-surface);
+  outline: none;
+  font: inherit;
+  text-align: left;
+  transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.cal-cell:last-child {
+  border-right: none;
+}
+.cal-cell:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 5%, transparent);
+}
+.cal-cell:active {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+
+/* Weekend cells — subtle warm tint */
+.cal-cell--weekend {
+  background: color-mix(in srgb, var(--color-surface-container-low) 40%, var(--color-surface));
+}
+.cal-cell--weekend:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-on-surface) 5%,
+    color-mix(in srgb, var(--color-surface-container-low) 40%, var(--color-surface))
+  );
+}
+
+/* Empty cells — blend into surface, near-invisible */
+.cal-cell--empty {
+  cursor: default;
+  background: var(--color-surface);
+  opacity: 0.4;
+}
+.cal-cell--empty:hover {
+  background: var(--color-surface);
+}
+
+/* Selected cell — Google Calendar blue tint */
+.cal-cell--selected {
+  background: #e8f0fe;
+}
+.cal-cell--selected:hover {
+  background: #d2e3fc;
+}
+[data-theme="dark"] .cal-cell--selected {
+  background: rgba(138, 180, 248, 0.14);
+}
+[data-theme="dark"] .cal-cell--selected:hover {
+  background: rgba(138, 180, 248, 0.2);
+}
+
+/* M3 heatmap — Google Blue tonal palette
+   Subtle, harmonious progression. Light: #1a73e8, Dark: #8ab4f8 */
+
+/* Light theme (default) */
+.cal-cell--heat-1 {
+  background: rgba(26, 115, 232, 0.035);
+}
+.cal-cell--heat-2 {
+  background: rgba(26, 115, 232, 0.07);
+}
+.cal-cell--heat-3 {
+  background: rgba(26, 115, 232, 0.12);
+}
+.cal-cell--heat-4 {
+  background: rgba(26, 115, 232, 0.18);
+}
+.cal-cell--heat-1:hover {
+  background: rgba(26, 115, 232, 0.07);
+}
+.cal-cell--heat-2:hover {
+  background: rgba(26, 115, 232, 0.11);
+}
+.cal-cell--heat-3:hover {
+  background: rgba(26, 115, 232, 0.16);
+}
+.cal-cell--heat-4:hover {
+  background: rgba(26, 115, 232, 0.22);
+}
+
+/* Dark theme */
+[data-theme="dark"] .cal-cell--heat-1 {
+  background: rgba(138, 180, 248, 0.04);
+}
+[data-theme="dark"] .cal-cell--heat-2 {
+  background: rgba(138, 180, 248, 0.09);
+}
+[data-theme="dark"] .cal-cell--heat-3 {
+  background: rgba(138, 180, 248, 0.16);
+}
+[data-theme="dark"] .cal-cell--heat-4 {
+  background: rgba(138, 180, 248, 0.25);
+}
+[data-theme="dark"] .cal-cell--heat-1:hover {
+  background: rgba(138, 180, 248, 0.08);
+}
+[data-theme="dark"] .cal-cell--heat-2:hover {
+  background: rgba(138, 180, 248, 0.13);
+}
+[data-theme="dark"] .cal-cell--heat-3:hover {
+  background: rgba(138, 180, 248, 0.2);
+}
+[data-theme="dark"] .cal-cell--heat-4:hover {
+  background: rgba(138, 180, 248, 0.29);
+}
+
+/* Day number — compact circle, identifier role (not hero) */
+.cal-day {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-on-surface);
+  flex-shrink: 0;
+  transition:
+    background-color 200ms cubic-bezier(0.2, 0, 0, 1),
+    color 200ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Today: filled circle + Google Calendar subtle glow */
+.cal-day--today {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(26, 115, 232, 0.35);
+}
+[data-theme="dark"] .cal-day--today {
+  box-shadow: 0 1px 6px rgba(138, 180, 248, 0.4);
+}
+
+/* Selected: filled circle */
+.cal-day--selected {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(26, 115, 232, 0.25);
+}
+[data-theme="dark"] .cal-day--selected {
+  box-shadow: 0 1px 5px rgba(138, 180, 248, 0.35);
+}
+
+/* Duration value — bottom-right, the hero metric */
+.cal-hours__value {
+  font-family: var(--font-mono, "Roboto Mono", monospace);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  margin-top: auto;
+  margin-bottom: 6px;
+  align-self: flex-end;
+}
+
+/* Sync bar — bottom edge of cell */
+.cal-bar {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+/* Synced/remote — muted green, recedes visually */
+.cal-bar__remote {
+  height: 100%;
+  background: var(--color-success);
+  opacity: 0.5;
+  min-width: 2px;
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Local/unsynced — primary blue, draws attention */
+.cal-bar__local {
+  height: 100%;
+  background: var(--color-primary);
+  opacity: 0.8;
+  min-width: 2px;
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Unified status bar — M3 bottom bar */
+.cal-footer {
+  position: relative;
+  padding: 0 16px;
+  height: 48px;
+  background: var(--color-surface-container);
+  border-top: 1px solid var(--color-outline-variant);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+}
+
+/* Stats row — chip-based, left-aligned */
+.cal-footer__stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Stat chip — tonal pill */
+.cal-footer__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--color-on-surface) 6%, transparent);
+  color: color-mix(in srgb, var(--color-on-surface-variant) 70%, transparent);
+}
+.cal-footer__chip strong {
+  font-family: var(--font-mono, "Roboto Mono", monospace);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--color-on-surface);
+}
+
+/* Hero chip (Total) — primary container treatment */
+.cal-footer__chip--primary {
+  background: var(--color-primary-container);
+  color: color-mix(in srgb, var(--color-on-primary-container) 70%, transparent);
+}
+.cal-footer__chip--primary strong {
+  color: var(--color-primary);
+  font-size: 12.5px;
+}
+
+/* Button reset for chip-as-button */
+button.cal-footer__chip {
+  border: none;
+  font: inherit;
+}
+
+/* Warning chip (Drafts) — interactive pill button */
+.cal-footer__chip--warn {
+  background: color-mix(in srgb, var(--color-error) 18%, var(--color-surface-container));
+  color: var(--color-error);
+  cursor: pointer;
+  gap: 6px;
+  outline: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.06);
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease,
+    outline-color 180ms ease,
+    transform 120ms ease;
+}
+.cal-footer__chip--warn:hover {
+  background: color-mix(in srgb, var(--color-error) 26%, var(--color-surface-container));
+  outline-color: color-mix(in srgb, var(--color-error) 50%, transparent);
+  box-shadow:
+    0 2px 6px 0 rgb(0 0 0 / 0.13),
+    0 1px 3px -1px rgb(0 0 0 / 0.08);
+}
+.cal-footer__chip--warn:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.08);
+}
+.cal-footer__chip--warn strong {
+  color: var(--color-error);
+  font-size: 12.5px;
+}
+/* Chevron hint inside warn chip */
+.cal-footer__chip--warn .cal-footer__chip-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.5;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+.cal-footer__chip--warn:hover .cal-footer__chip-icon {
+  opacity: 0.85;
+  transform: translateX(1px);
+}
+
+/* Batch overlay — Gmail-style contextual bar, slides over stats */
+.cal-footer__batch {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 16px;
+  gap: 12px;
+  background: var(--color-primary-container);
+  animation: cal-batch-in 250ms cubic-bezier(0.2, 0, 0, 1) both;
+  border-radius: 0 0 16px 16px;
+}
+@keyframes cal-batch-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.cal-footer__batch-count {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-on-primary-container);
+  flex: 1;
+}
+.cal-footer__batch-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 16px 0 12px;
+  border-radius: 16px;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    box-shadow 150ms ease,
+    opacity 150ms ease;
+}
+.cal-footer__batch-sync:hover {
+  box-shadow: var(--md-elevation-1);
+}
+.cal-footer__batch-sync:disabled {
+  background: color-mix(in srgb, var(--color-on-primary-container) 16%, transparent);
+  color: color-mix(in srgb, var(--color-on-primary-container) 50%, transparent);
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ============================================================================
+   ZEITERFASSUNG — Detail Panel (M3 Google-quality)
+   ============================================================================ */
+
+/* ── Detail Panel (de-*) — Google M3 list-based layout ── */
+
+/* Panel container — stretches to match calendar height, subtle depth */
+.de-panel {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0 16px 0 0;
+  box-shadow: inset 3px 0 6px -3px rgba(0, 0, 0, 0.04);
+}
+
+/* Panel header — M3 title-medium + supporting metric */
+.de-panel__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+}
+.de-panel__title {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: 0.15px;
+  color: var(--color-on-surface);
+}
+/* Hour metrics — compact chips, right-aligned */
+.de-panel__metrics {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.de-panel__metric {
+  font-family: var(--font-mono, "Roboto Mono", monospace);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  line-height: 16px;
+}
+/* Open/unsynced — primary tonal chip */
+.de-panel__metric--open {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+/* Synced — success tonal chip */
+.de-panel__metric--synced {
+  background: color-mix(in srgb, var(--color-success, #34a853) 12%, transparent);
+  color: var(--color-success, #0d652d);
+}
+[data-theme="dark"] .de-panel__metric--synced {
+  color: var(--color-success, #81c995);
+}
+
+/* M3 Secondary Tabs
+   Spec: material-web/tokens/v0_192/_md-comp-secondary-navigation-tab.scss
+   Height 48 · indicator 2px full-width primary · label title-small (14/500)
+   Active: on-surface · Inactive: on-surface-variant */
+.de-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-outline-variant);
+}
+.de-tab {
+  flex: 1;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  position: relative;
+  padding: 0 16px;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* M3 active indicator — spring-in animation */
+.de-tab::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transition:
+    transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+}
+.de-tab--active {
+  color: var(--color-on-surface);
+}
+.de-tab--active::after {
+  transform: scaleX(1);
+  opacity: 1;
+}
+/* M3 state layers — 8% hover, 12% focus/pressed */
+.de-tab:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.de-tab:focus-visible {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+.de-tab:active {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+
+/* Scrollable content */
+.de-panel__scroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline-variant) transparent;
+}
+.de-panel__scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.de-panel__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.de-panel__scroll::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 2px;
+}
+.de-panel__scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+
+/* Section (unsynced / synced) — flat container, panel provides visual boundary */
+.de-section {
+  /* entries go edge-to-edge within the panel */
+}
+.de-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 16px 4px;
+}
+.de-section__action {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 12px;
+  transition: background-color 150ms ease;
+}
+.de-section__action:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* ── Entry card (M3 outlined card) — two-row Google layout ── */
+/* Flat list row — Gmail/Calendar pattern */
+.de-card {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 20px;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Inset divider — starts after leading element (Google pattern) */
+.de-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 28px;
+  right: 20px;
+  height: 1px;
+  background: var(--color-outline-variant);
+  pointer-events: none;
+}
+.de-card:last-child::after {
+  display: none;
+}
+/* M3 state layers */
+.de-card:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 4%, transparent);
+}
+.de-card:focus-visible {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+.de-card:active {
+  background: color-mix(in srgb, var(--color-on-surface) 6%, transparent);
+}
+/* Selected: primary tint + left accent bar */
+.de-card--selected {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  box-shadow: inset 4px 0 0 var(--color-primary);
+}
+.de-card--selected:hover {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+.de-card--selected:focus-visible {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+.de-card--selected:active {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+/* Synced / disabled card — muted appearance */
+.de-card--disabled {
+  cursor: default;
+}
+.de-card--disabled .de-card__body,
+.de-card--disabled .de-card__project-bar,
+.de-card--disabled .de-stepper {
+  opacity: 0.5;
+}
+.de-card--disabled:hover {
+  background: transparent;
+}
+
+/* Row 1: leading + content + trailing */
+.de-card__row1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Action buttons — Gmail hover-reveal overlay */
+.de-card__actions {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  margin-right: 4px;
+}
+.de-card:hover .de-card__actions,
+.de-card--selected .de-card__actions,
+.de-card--disabled .de-card__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Touch devices: always show actions */
+@media (hover: none) {
+  .de-card__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Project color bar — left accent per project */
+.de-card__project-bar {
+  width: 4px;
+  align-self: stretch;
+  min-height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  opacity: 1;
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.de-card--selected .de-card__project-bar {
+  opacity: 0.4;
+}
+
+/* Synced indicator — vertical accent bar */
+.de-card__synced {
+  width: 3px;
+  align-self: stretch;
+  min-height: 28px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* M3 Checkbox — compact: 28dp touch target, 16dp visual */
+.de-checkbox {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  position: relative;
+  margin-left: -2px;
+  -webkit-tap-highlight-color: transparent;
+}
+.de-checkbox::after {
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-on-surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 15ms linear;
+}
+.de-checkbox:hover::after {
+  opacity: 0.08;
+}
+.de-checkbox:focus-visible::after {
+  opacity: 0.12;
+}
+.de-checkbox:active::after {
+  opacity: 0.12;
+}
+.de-checkbox--checked::after {
+  background: var(--color-primary);
+}
+
+.de-checkbox__box {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid var(--color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  transition:
+    background-color 150ms cubic-bezier(0.3, 0, 0.8, 0.15),
+    border-color 150ms cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+.de-checkbox__box--checked {
+  background: var(--color-primary);
+  border-color: transparent;
+  color: var(--color-on-primary);
+  transition:
+    background-color 350ms cubic-bezier(0.05, 0.7, 0.1, 1),
+    border-color 350ms cubic-bezier(0.05, 0.7, 0.1, 1);
+}
+.de-checkbox__box--checked > svg {
+  animation: checkbox-check-in 350ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+@keyframes checkbox-check-in {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.de-checkbox__box--indeterminate {
+  background: var(--color-primary);
+  border-color: transparent;
+  color: var(--color-on-primary);
+}
+
+/* Toolbar — sticky topbar, Gmail pattern, clean separation */
+.de-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 16px 0 20px;
+  background: color-mix(in srgb, var(--color-surface-container-low) 60%, var(--color-surface));
+  border-bottom: 1px solid var(--color-outline-variant);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.de-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* 3px project-bar + 12px gap = 15px offset to align checkbox with cards */
+  padding-left: 15px;
+}
+.de-toolbar__label {
+  font-family: "Roboto", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+/* Sort dropdown — Google Drive style */
+.de-sort {
+  margin-left: auto;
+  position: relative;
+}
+.de-sort__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  font-family: "Roboto", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+  white-space: nowrap;
+}
+.de-sort__btn:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  color: var(--color-on-surface);
+}
+.de-sort__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+.de-sort__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--color-surface-container-high);
+  border-radius: 12px;
+  box-shadow: var(--md-elevation-2);
+  padding: 4px 0;
+  z-index: 100;
+  min-width: 140px;
+  animation: de-sort-in 120ms cubic-bezier(0, 0, 0.2, 1);
+}
+@keyframes de-sort-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.de-sort__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface);
+  font-family: "Roboto", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 150ms;
+  white-space: nowrap;
+}
+.de-sort__option:first-child {
+  border-radius: 8px 8px 0 0;
+}
+.de-sort__option:last-child {
+  border-radius: 0 0 8px 8px;
+}
+.de-sort__option:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.de-sort__option--active {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+.de-sort__option--active:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+.de-sort__option-label {
+  flex: 1;
+  text-align: left;
+}
+
+/* Card body — M3 content area */
+.de-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.de-card__title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+  color: var(--color-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 85%;
+}
+
+/* Meta line — chip row */
+.de-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+}
+/* ID badge — segmented pill: [link | copy] */
+.de-card__id-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  flex-shrink: 0;
+  transition:
+    background-color var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    border-color var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.de-card__id-badge:hover {
+  background-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.de-card__badge-link {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--color-on-surface-variant);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0 8px;
+  line-height: 24px;
+  display: inline-block;
+}
+a.de-card__badge-link:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.de-card__badge-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--color-outline);
+  opacity: 0.3;
+  flex-shrink: 0;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.de-card__id-badge:hover .de-card__badge-divider {
+  opacity: 0;
+}
+.de-card__badge-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 0 5px 5px 0;
+  flex-shrink: 0;
+  opacity: 0.5;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    opacity 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.de-card__badge-copy:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+}
+.de-card__badge-copy:active {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-on-surface) 16%, transparent);
+}
+.de-card__badge-copy > svg {
+  transition: transform 150ms var(--md-motion-easing-emphasized);
+}
+.de-card__badge-copy:active > svg {
+  transform: scale(0.85);
+}
+.de-card__badge-copy--copied {
+  opacity: 1;
+  color: var(--color-success, #34a853);
+}
+.de-card__badge-copy--copied > svg {
+  animation: md-scale-in 200ms var(--md-motion-easing-decelerate) both;
+}
+.de-card__meta-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-family: "Roboto", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.de-card__meta-link {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+.de-card__meta-project {
+  background-color: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+.de-card__meta-activity {
+  background-color: var(--color-tertiary-container);
+  color: var(--color-on-tertiary-container);
+}
+
+.de-card__desc {
+  margin-top: 2px;
+  font-family: "Roboto", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 16px;
+  letter-spacing: 0.3px;
+  color: var(--color-on-surface-variant);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+/* Trailing area — duration stepper + action buttons overlay */
+.de-card__trailing {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  position: relative;
+}
+
+/* M3 Icon buttons — hover-reveal actions */
+.de-card__action-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 100ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.de-card__action-btn:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  color: var(--color-on-surface);
+}
+.de-card__action-btn:active {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+  transform: scale(0.92);
+}
+.de-card__action-btn--danger:hover {
+  background: color-mix(in srgb, var(--color-error) 8%, transparent);
+  color: var(--color-error);
+}
+.de-card__action-btn--danger:active {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}
+
+/* Google-style tonal duration stepper — pill shape */
+.de-stepper {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  overflow: hidden;
+}
+.de-stepper--static {
+  background: var(--color-surface-container);
+}
+/* Selected card → primary tint fill */
+.de-card--selected .de-stepper {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+.de-card--selected .de-stepper__btn {
+  color: var(--color-primary);
+}
+.de-card--selected .de-stepper__value {
+  color: var(--color-primary);
+}
+.de-stepper__btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 16px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.de-stepper__btn:hover {
+  color: var(--color-primary);
+}
+.de-stepper__btn:active {
+  color: var(--color-primary);
+}
+.de-stepper__btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+}
+.de-stepper__btn > svg {
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.de-stepper__btn:hover > svg {
+  transform: scale(1.1);
+}
+.de-stepper__btn:active > svg {
+  transform: scale(0.9);
+}
+.de-stepper__value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 42px;
+  text-align: center;
+  line-height: 32px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.de-stepper--static .de-stepper__value {
+  padding: 0 12px;
+}
+
+/* Empty state — generous Google-style layout */
+.de-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  text-align: center;
+  animation: de-empty-in 400ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+@keyframes de-empty-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.de-empty__icon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-on-surface-variant);
+  opacity: 0.35;
+  margin-bottom: 16px;
+}
+.de-empty__title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--color-on-surface);
+  margin-bottom: 4px;
+}
+.de-empty__text {
+  font-family: "Roboto", sans-serif;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-on-surface-variant);
+  max-width: 220px;
+}
+
+/* Batch action bar — now sits inside the shared footer */
+.de-batch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+  animation: de-batch-slide 200ms cubic-bezier(0, 0, 0.2, 1) both;
+}
+@keyframes de-batch-slide {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.de-batch__count {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-on-surface);
+  white-space: nowrap;
+}
+.de-batch__select {
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline);
+  background: transparent;
+  color: var(--color-on-surface);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  flex: 1;
+  min-width: 0;
+}
+.de-batch__select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  border-width: 2px;
+  padding-left: 9px;
+}
+/* M3 Filled Tonal Button — primary-container surface */
+.de-batch__sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 16px 0 12px;
+  border-radius: 16px;
+  border: none;
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container, var(--color-primary));
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: box-shadow 150ms ease;
+}
+.de-batch__sync:hover:not(:disabled) {
+  box-shadow: var(--md-elevation-1);
+}
+/* M3 disabled: container = on-surface 12%, content = on-surface 38% */
+.de-batch__sync:disabled {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+  color: var(--md-on-surface-disabled, rgba(31, 31, 31, 0.38));
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Unsynced indicator dot on calendar cells */
+.unsynced-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-tertiary);
+  flex-shrink: 0;
+}
+
+/* Entry sync slide animation */
+@keyframes entry-sync-slide {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateX(8px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(16px);
+    height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+}
+
+/* M3 Linear Progress (indeterminate) */
+.md-linear-progress {
+  height: 4px;
+  background: var(--color-primary-container);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.md-linear-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-primary);
+  border-radius: 2px;
+  animation: md-linear-progress-indeterminate 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes md-linear-progress-indeterminate {
+  0% {
+    left: -40%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -40%;
+  }
+  100% {
+    left: 100%;
+    right: -40%;
+  }
+}
+
+/* Duration stepper +/- buttons — icon scale on hover */
+.ed-stepper-btn > svg {
+  transition: transform 150ms var(--md-motion-easing-standard);
+}
+.ed-stepper-btn:hover:not(:disabled) > svg {
+  transform: scale(1.25);
+}
+.ed-stepper-btn:active:not(:disabled) > svg {
+  transform: scale(0.95);
+}
+
+/* Hide number input spinners globally (used by duration stepper) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* EditEntryDialog — chip link (ticket ID) — scale on hover */
+.ed-chip-link {
+  color: var(--color-on-tertiary-container);
+  text-decoration: none;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  transition: transform 150ms var(--md-motion-easing-standard);
+}
+.ed-chip-link:hover {
+  transform: scale(1.03);
+}
+.ed-chip-link:active {
+  transform: scale(0.97);
+}
+
+/* EditEntryDialog — chip copy button — scale on hover */
+.ed-chip-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-on-tertiary-container);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ed-chip-copy > svg {
+  transition: transform 150ms var(--md-motion-easing-standard);
+}
+.ed-chip-copy:hover > svg {
+  transform: scale(1.1);
+}
+.ed-chip-copy:active > svg {
+  transform: scale(0.95);
+}
+.ed-chip-copy--copied {
+  color: var(--color-success, #34a853);
+}
+.ed-chip-copy--copied > svg {
+  animation: md-scale-in 200ms var(--md-motion-easing-decelerate) both;
+}
+
+/* EditEntryDialog — Progress slider — M3 discrete slider in outlined field */
+.ed-progress-slider {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+.ed-progress-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--color-primary) 0%,
+    var(--color-primary) var(--slider-progress, 0%),
+    var(--color-surface-variant) var(--slider-progress, 0%),
+    var(--color-surface-variant) 100%
+  );
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+  position: relative;
+  z-index: 2;
+}
+/* Webkit thumb */
+.ed-progress-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: none;
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.2),
+    0 1px 1px 0 rgba(0, 0, 0, 0.14);
+  transition: box-shadow 200ms var(--md-motion-easing-standard);
+  cursor: pointer;
+}
+.ed-progress-slider input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow:
+    0 0 0 10px color-mix(in srgb, var(--color-primary) 12%, transparent),
+    0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+.ed-progress-slider input[type="range"]:active::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 14px color-mix(in srgb, var(--color-primary) 16%, transparent),
+    0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+/* Firefox thumb */
+.ed-progress-slider input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: none;
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.2),
+    0 1px 1px 0 rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+}
+.ed-progress-slider input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--color-primary) 0%,
+    var(--color-primary) var(--slider-progress, 0%),
+    var(--color-surface-variant) var(--slider-progress, 0%),
+    var(--color-surface-variant) 100%
+  );
+}
+/* Tick marks */
+.ed-progress-ticks {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  padding: 0 9px; /* half of thumb width minus tick radius */
+  z-index: 1;
+}
+.ed-progress-tick {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-on-surface-variant) 38%, transparent);
+  transition: background 150ms ease;
+}
+.ed-progress-tick--active {
+  background: color-mix(in srgb, var(--color-on-primary) 38%, var(--color-primary));
+}
+
+/* ============================================================================
+   TIMELOG — Dark theme overrides
+   ============================================================================ */
+
+[data-theme="dark"] .cal-layout {
+  background: var(--color-surface-container);
+  border-color: var(--color-outline-variant);
+}
+[data-theme="dark"] .cal-container {
+  background: var(--md-content-surface);
+}
+[data-theme="dark"] .de-panel {
+  background: var(--md-content-surface);
+}
+[data-theme="dark"] .cal-footer {
+  background: var(--color-surface-container);
+}
+[data-theme="dark"] .cal-footer__chip {
+  background: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+}
+[data-theme="dark"] .de-card {
+  --md-field-surface: var(--color-surface-container);
+}
+[data-theme="dark"] .de-card::after {
+  background: color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+}
+[data-theme="dark"] .de-stepper {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+[data-theme="dark"] .de-card--selected .de-stepper {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+[data-theme="dark"] .week-table-row:hover {
+  background-color: var(--color-surface-container);
+}
+[data-theme="dark"] [role="dialog"] form {
+  --md-field-surface: var(--md-dialog-surface);
+}

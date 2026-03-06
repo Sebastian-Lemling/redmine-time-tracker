@@ -1,0 +1,4 @@
+dist/
+data/
+public/fonts/
+*.woff2

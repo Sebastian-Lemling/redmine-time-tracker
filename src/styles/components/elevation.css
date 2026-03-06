@@ -1,0 +1,16 @@
+/* ============================================================================
+   M3 ELEVATION UTILITY CLASSES
+   ============================================================================ */
+
+.md-elevation-0 {
+  box-shadow: var(--md-elevation-0);
+}
+.md-elevation-1 {
+  box-shadow: var(--md-elevation-1);
+}
+.md-elevation-2 {
+  box-shadow: var(--md-elevation-2);
+}
+.md-elevation-3 {
+  box-shadow: var(--md-elevation-3);
+}

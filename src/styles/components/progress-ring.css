@@ -1,0 +1,91 @@
+/* --- Circular progress ring --- */
+.progress-ring {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 150ms ease;
+}
+
+.progress-ring:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+
+/* Glow flash after fill animation */
+.progress-ring--glow svg {
+  animation: ring-glow 400ms ease-out;
+}
+
+@keyframes ring-glow {
+  0% {
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(1.6) drop-shadow(0 0 4px var(--color-success));
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.progress-ring__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, "Roboto Mono", monospace);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Dropdown list — portaled to document.body */
+.progress-ring__menu {
+  position: fixed;
+  z-index: 100;
+  width: max-content;
+  min-width: 80px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background-color: var(--color-surface-container-lowest);
+  border-radius: 4px;
+}
+
+/* Menu item — compact */
+.progress-ring__item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 32px;
+  padding: 0 12px;
+  cursor: pointer;
+  color: var(--color-on-surface);
+  font-family: var(--font-mono, "Roboto Mono", monospace);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  transition: background-color 80ms ease;
+}
+
+.progress-ring__item:hover {
+  background-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+
+.progress-ring__item--active {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+/* --- Dark mode overrides --- */
+
+[data-theme="dark"] .progress-ring__menu {
+  background-color: var(--color-surface-container-high);
+}

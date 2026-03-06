@@ -1,0 +1,135 @@
+export interface RedmineUser {
+  id: number;
+  login: string;
+  firstname: string;
+  lastname: string;
+  mail: string;
+}
+
+export interface RedmineProject {
+  id: number;
+  name: string;
+  identifier?: string;
+}
+
+export interface RedmineIssue {
+  id: number;
+  subject: string;
+  project: RedmineProject;
+  priority: { id: number; name: string };
+  status: { id: number; name: string };
+  tracker: { id: number; name: string };
+  assigned_to?: { id: number; name: string };
+  fixed_version?: { id: number; name: string };
+  estimated_hours?: number;
+  spent_hours?: number;
+  due_date?: string | null;
+  done_ratio: number;
+  description?: string;
+  updated_on?: string;
+  created_on?: string;
+}
+
+export interface RedmineStatus {
+  id: number;
+  name: string;
+  is_closed: boolean;
+}
+
+export interface RedmineTracker {
+  id: number;
+  name: string;
+}
+
+export interface RedmineVersion {
+  id: number;
+  name: string;
+  status?: string;
+}
+
+export interface RedmineMember {
+  id: number;
+  name: string;
+}
+
+export interface RedmineTimeEntry {
+  id: number;
+  hours: number;
+  comments: string;
+  spent_on: string;
+  activity: { id: number; name: string };
+  project: { id: number; name: string };
+  issue?: { id: number };
+}
+
+export interface RedmineJournal {
+  id: number;
+  user: { id: number; name: string };
+  notes: string;
+  created_on: string;
+}
+
+export interface RedmineActivity {
+  id: number;
+  name: string;
+  is_default?: boolean;
+}
+
+export interface TimeLogEntry {
+  id: string;
+  issueId: number;
+  issueSubject: string;
+  projectId: number;
+  projectName: string;
+  startTime: string; // ISO string
+  endTime: string; // ISO string
+  duration: number; // minutes
+  originalDuration?: number; // minutes — first booked duration, never overwritten
+  description: string;
+  date: string; // YYYY-MM-DD
+  syncedToRedmine: boolean;
+  redmineTimeEntryId?: number;
+  activityId?: number;
+}
+
+export interface TimerState {
+  issueId: number;
+  issueSubject: string;
+  projectId?: number;
+  projectName: string;
+  startTime: string; // ISO string
+  pausedAt?: string; // ISO when paused
+  totalPausedMs?: number; // accumulated pause ms
+}
+
+export interface RedminePriority {
+  id: number;
+  name: string;
+  is_default?: boolean;
+}
+
+export interface IssueSearchParams {
+  q?: string;
+  project_id?: number;
+  status_id?: string;
+  tracker_id?: number;
+  assigned_to_id?: string;
+  fixed_version_id?: number;
+  priority_id?: number;
+  sort?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface IssueSearchResult {
+  issues: RedmineIssue[];
+  total_count: number;
+  offset: number;
+  limit: number;
+}
+
+/** Multiple concurrent timers keyed by issueId */
+export type MultiTimerMap = Record<number, TimerState>;
+
+/** Which timer is actively running (null = all paused) */
+export type ActiveTimerId = number | null;

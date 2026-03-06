@@ -1,0 +1,179 @@
+/* ============================================================================
+   CHIP MENU — Unified chip-trigger + dropdown for Tracker/Status/Version etc.
+   ============================================================================ */
+
+.chip-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background-color var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    border-color var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.chip-menu__trigger:hover {
+  background-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.chip-menu__trigger:active {
+  background-color: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+.chip-menu__trigger--empty {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.chip-menu__trigger-label {
+  display: block;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-menu__caret {
+  flex-shrink: 0;
+  transition: transform 200ms var(--md-motion-easing-emphasized);
+}
+.chip-menu__caret[data-open] {
+  transform: rotate(180deg);
+}
+
+.chip-menu__list {
+  position: fixed;
+  z-index: 100;
+  width: max-content;
+  min-width: 160px;
+  max-width: 300px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface-container-lowest);
+  border-radius: 4px;
+  transform-origin: top left;
+  animation: menu-enter 200ms var(--md-motion-easing-emphasized) forwards;
+}
+
+.chip-menu__items {
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  flex: 1;
+  min-height: 0;
+}
+
+@keyframes menu-enter {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Search input inside dropdown */
+.chip-menu__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  flex-shrink: 0;
+}
+.chip-menu__search-icon {
+  flex-shrink: 0;
+  color: var(--color-on-surface-variant);
+  opacity: 0.6;
+}
+.chip-menu__search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: none;
+  color: var(--color-on-surface);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  min-width: 0;
+}
+.chip-menu__search-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.chip-menu__search-input::placeholder {
+  color: var(--color-on-surface-variant);
+  opacity: 0.5;
+}
+
+.chip-menu__no-results {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  color: var(--color-on-surface-variant);
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.chip-menu__item {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+  color: var(--color-on-surface);
+  font-size: 13px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-menu__item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-on-surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.chip-menu__item:hover::after {
+  opacity: var(--md-state-hover-opacity);
+}
+.chip-menu__item:active::after {
+  opacity: var(--md-state-press-opacity);
+}
+.chip-menu__item[data-selected] {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+.chip-menu__item[data-highlighted] {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.chip-menu__item[data-highlighted][data-selected] {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+/* Dark mode override */
+[data-theme="dark"] .chip-menu__list {
+  background-color: var(--color-surface-container-high);
+}

@@ -1,0 +1,626 @@
+/* ============================================================================
+   M3 CARD HEADER — Structured header for TicketCard
+   Anatomy: [leading: dot + ID + copy] [center: tracker] [trailing: hours + avatar]
+   ============================================================================ */
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-lowest);
+  position: relative;
+}
+.ticket-card--accented .card-header {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--project-color) 6%, var(--color-surface-container-lowest)) 0%,
+    color-mix(in srgb, var(--project-color) 4%, var(--color-surface-container-lowest)) 50%,
+    var(--color-surface-container-lowest) 100%
+  );
+}
+
+/* Leading section */
+.card-header__leading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ID badge chip — segmented pill: [link | copy], outlined variant of de-card__id-badge */
+.card-header__id-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  flex-shrink: 0;
+  transition:
+    background-color var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    border-color var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.card-header__id-badge:hover {
+  background-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+
+.card-header__badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.card-header__badge-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--color-on-surface-variant);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0 10px 0 6px;
+  line-height: 28px;
+  display: inline-block;
+}
+a.card-header__badge-label:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/* Divider between label and copy — fades out on badge hover */
+.card-header__badge-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--color-outline);
+  opacity: 0.3;
+  flex-shrink: 0;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.card-header__id-badge:hover .card-header__badge-divider {
+  opacity: 0;
+}
+
+/* Copy — right-rounded, matches de-card__badge-copy */
+.card-header__badge-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 0 7px 7px 0;
+  flex-shrink: 0;
+  opacity: 0.5;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    opacity 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-header__badge-copy:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+}
+.card-header__badge-copy:active {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-on-surface) 16%, transparent);
+}
+.card-header__badge-copy > svg {
+  transition: transform 150ms var(--md-motion-easing-emphasized);
+}
+.card-header__badge-copy:active > svg {
+  transform: scale(0.85);
+}
+.card-header__badge-copy--copied {
+  opacity: 1;
+  color: var(--color-success, #34a853);
+}
+.card-header__badge-copy--copied > svg {
+  animation: md-scale-in 200ms var(--md-motion-easing-decelerate) both;
+}
+
+/* Center section: tracker + status chips */
+.card-header__center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Trailing section: hours + assignee, pushed to far right */
+.card-header__trailing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Pin button in card header — styled like progress-ring */
+.card-header__pin-btn {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 150ms ease;
+  color: var(--color-primary);
+}
+.card-header__pin-btn:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.card-header__pin-btn:active {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+.card-header__pin-btn svg.card-header__pin-ring {
+  position: absolute;
+  inset: 0;
+}
+.card-header__pin-btn .card-header__pin-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ghost pin button — unpinned state: same look, just dimmed */
+.card-header__pin-btn--ghost {
+  color: var(--color-primary);
+  opacity: 0.4;
+  transition: opacity 150ms ease;
+}
+.ticket-card:hover .card-header__pin-btn--ghost {
+  opacity: 0.6;
+}
+.card-header__pin-btn--ghost:hover {
+  opacity: 1 !important;
+}
+
+/* Star (favorite) button in card header */
+.card-header__star-btn {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 150ms ease;
+  color: var(--color-star, #f9ab00);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-header__star-btn:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.card-header__star-btn:active {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+.card-header__star-btn svg.card-header__star-ring {
+  position: absolute;
+  inset: 0;
+}
+.card-header__star-btn .card-header__star-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ghost star — same look, just dimmed */
+.card-header__star-btn--ghost {
+  color: var(--color-star, #f9ab00);
+  opacity: 0.4;
+  transition: opacity 150ms ease;
+}
+.ticket-card:hover .card-header__star-btn--ghost {
+  opacity: 0.6;
+}
+.card-header__star-btn--ghost:hover {
+  opacity: 1 !important;
+}
+
+/* Filled star — favorited state */
+.card-header__star-btn--filled {
+  color: var(--color-star, #f9ab00);
+}
+
+/* Close booking button overlaid in header trailing area */
+.card-header__close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+/* Card body — content below the header */
+.card-body {
+  padding: 12px 16px;
+}
+
+/* Subject row — clickable to expand description */
+.card-body__subject-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 2px 4px 2px 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+  border-radius: 4px;
+}
+.card-body__subject-row:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 5%, transparent);
+}
+
+/* Expand/collapse chevron */
+.card-body__expand-icon {
+  flex-shrink: 0;
+  color: var(--color-on-surface-variant);
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.card-body__expand-icon--open {
+  transform: rotate(90deg);
+}
+
+/* Loading bar — M3-style linear progress */
+.card-body__loading-track {
+  height: 3px;
+  margin: 8px 0 0;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  overflow: hidden;
+}
+.card-body__loading-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: var(--color-success);
+  animation:
+    desc-fill 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+    desc-glow 400ms ease-out 1.2s forwards;
+}
+@keyframes desc-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+@keyframes desc-glow {
+  0% {
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(1.6) drop-shadow(0 0 6px var(--color-success));
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+/* Collapsible description area */
+.card-body__description {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms cubic-bezier(0.2, 0, 0, 1);
+  overflow: hidden;
+}
+.card-body__description > * {
+  overflow: hidden;
+  min-height: 0;
+}
+.card-body__description--open {
+  grid-template-rows: 1fr;
+}
+.card-body__description--open > * {
+  padding-top: 8px;
+  padding-left: 20px;
+}
+
+/* Markdown inside description */
+.card-body__markdown {
+  color: var(--color-on-surface-variant);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.card-body__markdown p {
+  margin: 0 0 8px;
+}
+.card-body__markdown p:last-child {
+  margin-bottom: 0;
+}
+.card-body__markdown strong {
+  color: var(--color-on-surface);
+  font-weight: 600;
+}
+.card-body__markdown code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.card-body__markdown pre {
+  background: color-mix(in srgb, var(--color-on-surface) 6%, transparent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  overflow-x: auto;
+}
+.card-body__markdown pre code {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.card-body__markdown ul,
+.card-body__markdown ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+.card-body__markdown li {
+  margin: 2px 0;
+}
+.card-body__markdown a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.card-body__markdown a:hover {
+  text-decoration: underline;
+}
+.card-body__markdown h1,
+.card-body__markdown h2,
+.card-body__markdown h3,
+.card-body__markdown h4 {
+  color: var(--color-on-surface);
+  margin: 8px 0 4px;
+  font-weight: 600;
+}
+.card-body__markdown h1 {
+  font-size: 16px;
+}
+.card-body__markdown h2 {
+  font-size: 15px;
+}
+.card-body__markdown h3 {
+  font-size: 14px;
+}
+.card-body__markdown h4 {
+  font-size: 13px;
+}
+
+/* Comments (journals) inside description expand */
+.card-body__comments {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-outline-variant);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card-body__comments-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-on-surface-variant);
+}
+.card-body__comments-title--empty {
+  font-weight: 400;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.card-body__comment {
+  padding: 8px 0;
+  border-top: 1px dashed color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+}
+.card-body__comment:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.card-body__comment-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.card-body__comment-author {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+.card-body__comment-date {
+  font-size: 11px;
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+}
+.card-body__comment-body {
+  padding-left: 0;
+}
+
+/* ============================================================================
+   TICKET CARD — Avatar, Hours Pill, Due Date Badge
+   ============================================================================ */
+
+/* Avatar circle */
+.ticket-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  line-height: 1;
+  flex-shrink: 0;
+  user-select: none;
+  letter-spacing: 0.3px;
+}
+
+/* Hours pill */
+.ticket-hours {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  background-color: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* Over budget variant */
+.ticket-hours--over {
+  background-color: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+/* Due date badge */
+.ticket-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  background-color: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* Overdue variant */
+.ticket-due--overdue {
+  background-color: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+/* ============================================================================
+   TICKET CARD — elevated card with project accent
+   ============================================================================ */
+
+.ticket-card {
+  position: relative;
+  background: var(--md-card-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-outline-variant);
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.06),
+    0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  transition:
+    box-shadow 280ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ticket-card:hover {
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.08),
+    0 2px 6px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* --- Project color accent bar (::before) --- */
+.ticket-card--accented::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 2;
+  background: var(--project-color);
+}
+
+/* --- Timer states --- */
+.ticket-card--running {
+  border-color: var(--color-primary);
+  outline: 1px solid var(--color-primary);
+  outline-offset: -1px;
+}
+
+.ticket-card--paused {
+  border-color: var(--color-outline);
+}
+
+/* Running timer accent — no animation, just static bar
+}
+
+/* ============================================================================
+   PINNED GROUP — in TicketList
+   ============================================================================ */
+
+.ticket-group--pinned .ticket-group__header {
+  color: var(--color-primary);
+}
+
+.ticket-group--pinned .ticket-group__color-dot {
+  background: var(--color-primary) !important;
+}
+
+.ticket-group--pinned .ticket-group__name {
+  color: var(--color-primary);
+}
+
+/* ============================================================================
+   CARD — Dark theme overrides
+   ============================================================================ */
+
+[data-theme="dark"] .card-header {
+  background: var(--color-surface-container);
+}
+[data-theme="dark"] .ticket-card--accented .card-header {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--project-color) 10%, var(--color-surface-container)) 0%,
+    color-mix(in srgb, var(--project-color) 6%, var(--color-surface-container)) 50%,
+    var(--color-surface-container) 100%
+  );
+}
+[data-theme="dark"] .ticket-card {
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.2),
+    0 1px 4px 0 rgba(0, 0, 0, 0.15);
+}
+[data-theme="dark"] .ticket-card:hover {
+  box-shadow:
+    0 2px 4px 0 rgba(0, 0, 0, 0.25),
+    0 3px 8px 0 rgba(0, 0, 0, 0.2);
+}

@@ -1,0 +1,176 @@
+/* ============================================================================
+   M3 TIMER STEPPER — Segmented control with internal dividers
+   Three-zone layout: [ − │ value │ + ]
+   Inspired by M3 Segmented Button + Google Shopping quantity stepper.
+   ============================================================================ */
+
+.timer-stepper {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  overflow: hidden;
+  /* Force single compositing layer — prevents white seam artifacts
+     between child layers during animation repaints */
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* -- Color variants -- */
+.timer-stepper--running {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.timer-stepper--paused {
+  background-color: var(--color-surface-container-high);
+  color: var(--color-on-surface-variant);
+}
+.timer-stepper--on-primary {
+  background: color-mix(in srgb, var(--color-on-primary) 16%, transparent);
+  color: inherit;
+}
+.timer-stepper--on-primary-container {
+  background: color-mix(in srgb, var(--color-on-primary-container) 16%, transparent);
+  color: inherit;
+}
+
+/* -- Size: compact (TicketCard, 36px) -- */
+.timer-stepper--compact {
+  height: 36px;
+}
+.timer-stepper--compact .timer-stepper__btn {
+  width: 36px;
+  height: 36px;
+}
+.timer-stepper--compact .timer-stepper__value {
+  font-size: 13px;
+  line-height: 16px;
+  min-width: 56px;
+  padding: 0 8px;
+  font-weight: 500;
+}
+
+/* -- Size: mini (MonthView card badge, 26px) -- */
+/* not used — replaced by de-card__toolbar */
+
+/* -- Size: banner (ActiveTimer, 40px) -- */
+.timer-stepper--banner {
+  height: 40px;
+}
+.timer-stepper--banner .timer-stepper__btn {
+  width: 40px;
+  height: 40px;
+}
+.timer-stepper--banner .timer-stepper__value {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 500;
+  min-width: 80px;
+  padding: 0 8px;
+}
+
+/* -- Stepper button (touch area inside the pill) -- */
+.timer-stepper__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+/* Focus-visible state layer (keyboard a11y only) */
+.timer-stepper__btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.timer-stepper__btn:focus-visible::after {
+  opacity: 0.12;
+}
+/* Icon transform feedback — hover: grow, press: shrink */
+.timer-stepper__btn > svg {
+  transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+.timer-stepper__btn:hover > svg {
+  transform: scale(1.2);
+}
+.timer-stepper__btn:active > svg {
+  transform: scale(0.85);
+}
+
+/* -- Value display (center zone with dividers) -- */
+.timer-stepper__value {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  /* Segmented dividers */
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+}
+.timer-stepper--running .timer-stepper__value {
+  border-color: color-mix(in srgb, var(--color-on-primary) 20%, transparent);
+}
+.timer-stepper--paused .timer-stepper__value {
+  border-color: var(--color-outline-variant);
+}
+.timer-stepper--on-primary .timer-stepper__value {
+  border-color: color-mix(in srgb, var(--color-on-primary) 15%, transparent);
+}
+.timer-stepper--on-primary-container .timer-stepper__value {
+  border-color: color-mix(in srgb, var(--color-on-primary-container) 15%, transparent);
+}
+
+/* -- Recording dot (M3: static with entrance, subtle breathe for "alive" feel) -- */
+.timer-stepper__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+  will-change: opacity; /* optimize breathe repaints, avoid full-layer promotion */
+  /* Entrance: pop-in with M3 emphasized-decelerate */
+  animation:
+    recording-dot-enter 300ms cubic-bezier(0.05, 0.7, 0.1, 1) both,
+    recording-breathe 3s ease-in-out 300ms infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-stepper__dot {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   ACTIVE TIMER BAR — Inline footer bar inside ticket-layout__container
+   ============================================================================ */
+
+.active-timer-bar {
+  flex-shrink: 0;
+  animation: active-timer-enter 300ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+.active-timer-bar__inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  border-radius: 0 0 12px 12px;
+}
