@@ -42,10 +42,9 @@ const baseProps = {
 };
 
 describe("TimeLogSection", () => {
-  it("shows empty state when no entries", () => {
+  it("renders MonthView even with no local entries", () => {
     render(<TimeLogSection {...baseProps} />);
-    expect(screen.getByText("No entries yet")).toBeInTheDocument();
-    expect(screen.getByText("Start a timer on a ticket above")).toBeInTheDocument();
+    expect(screen.queryByText("No entries yet")).not.toBeInTheDocument();
   });
 
   it("renders MonthView when entries exist", () => {

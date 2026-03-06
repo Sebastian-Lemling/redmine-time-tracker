@@ -6,8 +6,6 @@ import type {
 } from "../../types/redmine";
 import type { AppRoute } from "../../hooks/useHashRouter";
 import { MonthView } from "./MonthView";
-import { Clock } from "lucide-react";
-import { useI18n } from "../../i18n/I18nContext";
 
 interface Props {
   route: AppRoute;
@@ -56,38 +54,6 @@ export function TimeLogSection({
   fetchIssueSubject,
   redmineUrl,
 }: Props) {
-  const { t } = useI18n();
-
-  if (entries.length === 0) {
-    return (
-      <div className="animate-fade-in py-16 text-center">
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: "var(--color-surface-container-high)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 12px",
-          }}
-        >
-          <Clock className="h-6 w-6" style={{ color: "var(--color-on-surface-variant)" }} />
-        </div>
-        <p className="md-title-small" style={{ color: "var(--color-on-surface)" }}>
-          {t.noEntries}
-        </p>
-        <p
-          className="md-body-small"
-          style={{ color: "var(--color-on-surface-variant)", marginTop: 4 }}
-        >
-          {t.noEntriesDesc}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div
       className="animate-fade-in"
