@@ -1,166 +1,107 @@
-# Redmine Tracker
+<div align="center">
+  <h1>Redmine Tracker</h1>
+  <p><strong>Track time beautifully.</strong> A modern Redmine client that feels like a Google app.</p>
 
-A Material Design 3 time tracking application that integrates with Redmine. Built with React 19, TypeScript, Vite 7, and Tailwind CSS 4.
+  <p>
+    <a href="#screenshots">Screenshots</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="#quick-start">Quick Start</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="docs/installation.md">Installation Guide</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="CONTRIBUTING.md">Contributing</a>
+  </p>
 
-## Prerequisites
+  <br />
 
-- **Node.js** >= 18.0.0
-- **npm** (included with Node.js)
-- A running **Redmine** instance with API access enabled
-- Your **Redmine API key** (found under _My Account_ → _API access key_ in Redmine)
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/hero-light.png">
+    <img alt="Redmine Tracker — Month calendar with heat map and daily time entries" src="docs/screenshots/hero-light.png" width="100%">
+  </picture>
 
-## Installation
+  <br />
+  <br />
 
-### macOS
+<a aria-label="CI status" href="https://github.com/Sebastian-Lemling/redmine-time-tracker/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Sebastian-Lemling/redmine-time-tracker/ci.yml?style=for-the-badge&logo=github&label=CI&labelColor=000"></a>&nbsp;
+<a aria-label="MIT license" href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge&labelColor=000"></a>&nbsp;
+<a aria-label="TypeScript 5.8" href="https://www.typescriptlang.org/"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=000"></a>&nbsp;
+<a aria-label="Node.js 18+" href="https://nodejs.org/"><img alt="Node.js" src="https://img.shields.io/badge/Node.js-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white&labelColor=000"></a>
+
+</div>
+
+<br />
+
+## Why Redmine Tracker?
+
+Redmine's built-in time tracking is clunky and slow. This app replaces it with a fast, keyboard-friendly interface that makes logging hours painless — start a timer with one click, book time from a clean dialog, review your month in a calendar with heat map.
+
+## Features
+
+- **Project-grouped tickets** — drag-to-reorder, color-coded by project
+- **Inline editing** — status, tracker, assignee, version, progress — right on the card
+- **One-click timers** — start from any ticket, live counter, pause & resume
+- **Manual booking** — duration stepper, activity picker, date & description
+- **Month calendar** — heat map visualization with daily detail panel
+- **Batch sync** — review drafts, then push to Redmine in one click
+- **Full-text search** — filter by project, status, tracker, priority
+- **Pins & favorites** — organize your most-used tickets
+- **Dark mode** — full Material Design 3 dark color scheme
+- **i18n** — German and English, extensible to more languages
+
+## See it in action
+
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/timer-workflow-dark.gif">
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/timer-workflow.gif">
+    <img alt="Timer workflow: start a timer, book your time, review in the calendar" src="docs/screenshots/timer-workflow.gif" width="100%">
+  </picture>
+  <br />
+  <sub>Start a timer &rarr; book your time &rarr; review in the calendar</sub>
+</div>
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%">
+<img alt="Time tracking month view" src="docs/screenshots/timelog-light.png" width="100%">
+</td>
+<td width="50%">
+<img alt="Booking dialog" src="docs/screenshots/booking-dialog.png" width="100%">
+</td>
+</tr>
+<tr>
+<td width="50%">
+<img alt="Search with keyword highlighting" src="docs/screenshots/search-results.png" width="100%">
+</td>
+<td width="50%">
+<img alt="Active timer on a ticket" src="docs/screenshots/timer-active.png" width="100%">
+</td>
+</tr>
+</table>
+
+<details>
+<summary>&nbsp;<strong>Dark mode</strong></summary>
+<br />
+
+<img alt="Tickets in dark mode" src="docs/screenshots/tickets-dark.png" width="100%">
+
+<img alt="Time tracking in dark mode" src="docs/screenshots/timelog-dark.png" width="100%">
+
+</details>
+
+## Quick Start
 
 ```bash
-# Install Node.js via Homebrew (if not installed)
-brew install node
-
-# Clone and install
-git clone <repository-url>
-cd redmine-tracker
+git clone https://github.com/Sebastian-Lemling/redmine-time-tracker.git
+cd redmine-time-tracker
 npm install
-
-# Run interactive setup (stores credentials in macOS Keychain)
-npm run setup
+npm run setup    # Interactive config — Redmine URL + API key
+npm run dev      # Opens at http://localhost:5173
 ```
 
-You will be prompted for:
+The setup wizard verifies the connection and stores credentials in your OS keystore (macOS Keychain, GNOME Keyring, or `.env` fallback). See the **[Installation Guide](docs/installation.md)** for OS-specific instructions.
 
-- **Redmine URL** — e.g. `https://redmine.example.com`
-- **API Key** — your personal Redmine API key
+## Contributing
 
-The setup verifies the connection and stores credentials securely in macOS Keychain.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code quality checks, and commit conventions.
 
-```bash
-# Start the application
-npm run dev
-```
+## License
 
-The app runs at **http://localhost:5173**. The proxy server starts on port 3001.
-
-### Linux
-
-```bash
-# Install Node.js (Ubuntu/Debian)
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Or via nvm (any distro)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-nvm install 22
-nvm use 22
-
-# Install libsecret for credential storage (Ubuntu/Debian)
-sudo apt-get install -y libsecret-tools
-
-# On Fedora/RHEL
-# sudo dnf install libsecret
-
-# On Arch
-# sudo pacman -S libsecret
-
-# Clone and install
-git clone <repository-url>
-cd redmine-tracker
-npm install
-
-# Run interactive setup (stores credentials via secret-tool / GNOME Keyring / KWallet)
-npm run setup
-
-# Start the application
-npm run dev
-```
-
-> **Note:** If `secret-tool` is not available, credentials fall back to a local `.env` file with restricted permissions (`chmod 600`).
-
-### Windows
-
-```powershell
-# Install Node.js
-# Download installer from https://nodejs.org/ (LTS recommended)
-# Or via winget:
-winget install OpenJS.NodeJS.LTS
-
-# Clone and install
-git clone <repository-url>
-cd redmine-tracker
-npm install
-
-# Run interactive setup (stores credentials in .env file)
-npm run setup
-
-# Start the application
-npm run dev
-```
-
-> **Note:** Windows uses a `.env` file for credential storage. The file permissions are restricted via `icacls`. A native keystore backend (DPAPI) is not yet implemented.
-
-## Credential Storage
-
-| OS      | Backend     | Details                                                         |
-| ------- | ----------- | --------------------------------------------------------------- |
-| macOS   | Keychain    | `security add-generic-password` under service `redmine-tracker` |
-| Linux   | secret-tool | GNOME Keyring or KWallet via `secret-tool store`                |
-| Windows | `.env` file | Plaintext fallback with restricted ACLs                         |
-
-Credentials are resolved in order: OS keystore → environment variables (`REDMINE_URL`, `REDMINE_API_KEY`) → `.env` file.
-
-To override without running setup, create a `.env` file in the project root:
-
-```bash
-cp .env.example .env
-# Edit .env with your values
-```
-
-## Available Scripts
-
-| Command                 | Description                                 |
-| ----------------------- | ------------------------------------------- |
-| `npm run setup`         | Interactive Redmine configuration           |
-| `npm run dev`           | Start proxy + dev server                    |
-| `npm run build`         | Production build                            |
-| `npm run test`          | Run all tests                               |
-| `npm run test:watch`    | Run tests in watch mode                     |
-| `npm run test:coverage` | Run tests with coverage report              |
-| `npm run lint`          | Run ESLint                                  |
-| `npm run format`        | Format code with Prettier                   |
-| `npm run validate`      | Run typecheck + lint + format check + tests |
-| `npm run test:e2e`      | Run Playwright end-to-end tests             |
-
-## Ports
-
-| Service         | Port          |
-| --------------- | ------------- |
-| Vite dev server | 5173 (strict) |
-| API proxy       | 3001          |
-
-The proxy at port 3001 forwards all `/api/*` requests to your Redmine instance, handling CORS and authentication.
-
-## Commit Convention
-
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) enforced by commitlint + husky.
-
-```
-<type>: <description>
-```
-
-| Type       | When to use                         |
-| ---------- | ----------------------------------- |
-| `feat`     | New feature                         |
-| `fix`      | Bug fix                             |
-| `refactor` | Code change (no new feature or fix) |
-| `test`     | Adding or updating tests            |
-| `docs`     | Documentation only                  |
-| `style`    | Formatting, no code change          |
-| `chore`    | Build, tooling, dependencies        |
-| `perf`     | Performance improvement             |
-
-Examples:
-
-```bash
-git commit -m "feat: add dark mode toggle"
-git commit -m "fix: resolve timer drift on tab switch"
-git commit -m "docs: update setup instructions for Linux"
-```
+[MIT](LICENSE) &copy; Sebastian Lemling
