@@ -17,6 +17,7 @@ import { useEntryHandlers } from "./hooks/useEntryHandlers";
 import { useSyncOrchestrator } from "./hooks/useSyncOrchestrator";
 import { useDialogManager } from "./hooks/useDialogManager";
 import { useSnackbar } from "./hooks/useSnackbar";
+import { useWeekRemoteEntries } from "./hooks/useWeekRemoteEntries";
 import { toLocalDateString, getWeekKey } from "./lib/dates";
 import { AppProvider } from "./AppContext";
 import AppHeader from "./AppHeader";
@@ -36,12 +37,14 @@ export default function App() {
 
   const [error, setError] = useState<string | null>(null);
   const { snackbar, showSnackbar, dismissSnackbar } = useSnackbar();
+  const { weekRemoteEntries, fetchWeekRemoteEntries } = useWeekRemoteEntries();
   useEffect(() => {
     if (redmine.user) {
       redmine.fetchIssues();
       redmine.fetchActivities();
       redmine.fetchStatuses();
       redmine.fetchTrackers();
+      fetchWeekRemoteEntries();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [redmine.user]);
@@ -91,6 +94,7 @@ export default function App() {
     fetchIssues: redmine.fetchIssues,
     refreshPinned: pinned.refreshPinned,
     refreshRemoteEntries: redmine.refreshRemoteEntries,
+    refreshWeekRemoteEntries: fetchWeekRemoteEntries,
   });
 
   const dialogManager = useDialogManager({
@@ -157,24 +161,40 @@ export default function App() {
     setError,
     t,
   });
+  const syncedCount = useMemo(
+    () => timeLog.entries.filter((e) => e.syncedToRedmine).length,
+    [timeLog.entries],
+  );
+  const prevSyncedCountRef = useRef(syncedCount);
+  useEffect(() => {
+    if (syncedCount > prevSyncedCountRef.current) {
+      fetchWeekRemoteEntries();
+    }
+    prevSyncedCountRef.current = syncedCount;
+  }, [syncedCount, fetchWeekRemoteEntries]);
+
   const unsyncedCount = useMemo(
     () => timeLog.entries.filter((e) => !e.syncedToRedmine).length,
     [timeLog.entries],
   );
   const todayStr = toLocalDateString(new Date());
   const currentWeekKey = getWeekKey(todayStr);
-  const todayMinutes = useMemo(
-    () =>
-      timeLog.entries.filter((e) => e.date === todayStr).reduce((sum, e) => sum + e.duration, 0),
-    [timeLog.entries, todayStr],
-  );
-  const weekMinutes = useMemo(
-    () =>
-      timeLog.entries
-        .filter((e) => getWeekKey(e.date) === currentWeekKey)
-        .reduce((sum, e) => sum + e.duration, 0),
-    [timeLog.entries, currentWeekKey],
-  );
+  const todayMinutes = useMemo(() => {
+    const remoteMinutes = weekRemoteEntries
+      .filter((e) => e.spent_on === todayStr)
+      .reduce((sum, e) => sum + Math.round(e.hours * 60), 0);
+    const localUnsyncedMinutes = timeLog.entries
+      .filter((e) => e.date === todayStr && !e.syncedToRedmine)
+      .reduce((sum, e) => sum + e.duration, 0);
+    return remoteMinutes + localUnsyncedMinutes;
+  }, [timeLog.entries, weekRemoteEntries, todayStr]);
+  const weekMinutes = useMemo(() => {
+    const remoteMinutes = weekRemoteEntries.reduce((sum, e) => sum + Math.round(e.hours * 60), 0);
+    const localUnsyncedMinutes = timeLog.entries
+      .filter((e) => getWeekKey(e.date) === currentWeekKey && !e.syncedToRedmine)
+      .reduce((sum, e) => sum + e.duration, 0);
+    return remoteMinutes + localUnsyncedMinutes;
+  }, [timeLog.entries, weekRemoteEntries, currentWeekKey]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const issuesSnapshotRef = useRef<string>("");
@@ -195,6 +215,7 @@ export default function App() {
       const [newIssues] = await Promise.all([
         redmine.fetchIssues(),
         pinned.refreshPinned(),
+        fetchWeekRemoteEntries(),
         minDelay,
       ]);
       const newSnapshot = newIssues
@@ -225,6 +246,7 @@ export default function App() {
     redmine.issues,
     redmine.fetchIssues,
     pinned.refreshPinned,
+    fetchWeekRemoteEntries,
     showSnackbar,
     t,
   ]);

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@/test/test-utils";
 import App from "./App";
 import type { TimeLogEntry } from "./types/redmine";
+import { toLocalDateString, getWeekKey, getWeekDates } from "./lib/dates";
 
 const mockFetchIssues = vi.fn().mockResolvedValue([]);
 const mockFetchActivities = vi.fn().mockResolvedValue([]);
@@ -204,17 +205,33 @@ vi.mock("./hooks/useSnackbar", () => ({
   }),
 }));
 
+const mockFetchWeekRemoteEntries = vi.fn().mockResolvedValue(undefined);
+let weekRemoteEntriesOverride: any[] = [];
+vi.mock("./hooks/useWeekRemoteEntries", () => ({
+  useWeekRemoteEntries: () => ({
+    weekRemoteEntries: weekRemoteEntriesOverride,
+    fetchWeekRemoteEntries: mockFetchWeekRemoteEntries,
+  }),
+}));
+
+let capturedAppContext: Record<string, any> = {};
 let capturedAppContentProps: Record<string, any> = {};
 vi.mock("./AppHeader", () => ({
   default: () => <div data-testid="app-header">AppHeader</div>,
 }));
 
-vi.mock("./AppContent", () => ({
-  default: (props: Record<string, any>) => {
-    capturedAppContentProps = props;
-    return <div data-testid="app-content">AppContent</div>;
-  },
-}));
+/* eslint-disable react-hooks/rules-of-hooks */
+vi.mock("./AppContent", async () => {
+  const { useAppContext } = await import("./AppContext");
+  return {
+    default: (props: Record<string, any>) => {
+      capturedAppContentProps = props;
+      capturedAppContext = useAppContext();
+      return <div data-testid="app-content">AppContent</div>;
+    },
+  };
+});
+/* eslint-enable react-hooks/rules-of-hooks */
 
 vi.mock("./components/dialogs", () => ({
   BookingDialog: (props: any) => (
@@ -236,7 +253,9 @@ describe("App", () => {
     redmineOverrides = {};
     dialogOverrides = {};
     timeLogOverrides = {};
+    weekRemoteEntriesOverride = [];
     mockSnackbarData = null;
+    capturedAppContext = {};
     capturedAppContentProps = {};
     vi.clearAllMocks();
   });
@@ -659,5 +678,182 @@ describe("App", () => {
       render(<App />);
     });
     expect(screen.getByTestId("booking-dialog")).toBeInTheDocument();
+  });
+
+  describe("todayMinutes and weekMinutes with remote entries", () => {
+    const today = toLocalDateString(new Date());
+    const weekKey = getWeekKey(today);
+    const { start: weekStart } = getWeekDates(weekKey);
+    const otherWeekDay =
+      weekStart === today
+        ? toLocalDateString(new Date(new Date(weekStart + "T00:00:00").getTime() + 86400000))
+        : weekStart;
+
+    const userOverride = {
+      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
+    };
+
+    it("todayMinutes = remote today + local unsynced today", () => {
+      weekRemoteEntriesOverride = [
+        {
+          id: 1,
+          hours: 1.5,
+          spent_on: today,
+          comments: "",
+          activity: { id: 9, name: "Dev" },
+          project: { id: 1, name: "P" },
+        },
+      ];
+      timeLogOverrides = {
+        entries: [
+          {
+            id: "e1",
+            issueId: 1,
+            issueSubject: "A",
+            projectId: 1,
+            projectName: "P",
+            startTime: "",
+            endTime: "",
+            duration: 30,
+            description: "",
+            date: today,
+            syncedToRedmine: false,
+          },
+        ] as TimeLogEntry[],
+      };
+      redmineOverrides = userOverride;
+      render(<App />);
+      expect(capturedAppContext.todayMinutes).toBe(120);
+    });
+
+    it("weekMinutes = remote week + local unsynced week", () => {
+      weekRemoteEntriesOverride = [
+        {
+          id: 1,
+          hours: 2,
+          spent_on: today,
+          comments: "",
+          activity: { id: 9, name: "Dev" },
+          project: { id: 1, name: "P" },
+        },
+        {
+          id: 2,
+          hours: 1,
+          spent_on: otherWeekDay,
+          comments: "",
+          activity: { id: 9, name: "Dev" },
+          project: { id: 1, name: "P" },
+        },
+      ];
+      timeLogOverrides = {
+        entries: [
+          {
+            id: "e1",
+            issueId: 1,
+            issueSubject: "A",
+            projectId: 1,
+            projectName: "P",
+            startTime: "",
+            endTime: "",
+            duration: 45,
+            description: "",
+            date: today,
+            syncedToRedmine: false,
+          },
+        ] as TimeLogEntry[],
+      };
+      redmineOverrides = userOverride;
+      render(<App />);
+      expect(capturedAppContext.weekMinutes).toBe(225);
+    });
+
+    it("synced local entries are NOT double-counted", () => {
+      weekRemoteEntriesOverride = [
+        {
+          id: 1,
+          hours: 1,
+          spent_on: today,
+          comments: "",
+          activity: { id: 9, name: "Dev" },
+          project: { id: 1, name: "P" },
+        },
+      ];
+      timeLogOverrides = {
+        entries: [
+          {
+            id: "e1",
+            issueId: 1,
+            issueSubject: "A",
+            projectId: 1,
+            projectName: "P",
+            startTime: "",
+            endTime: "",
+            duration: 60,
+            description: "",
+            date: today,
+            syncedToRedmine: true,
+          },
+          {
+            id: "e2",
+            issueId: 2,
+            issueSubject: "B",
+            projectId: 1,
+            projectName: "P",
+            startTime: "",
+            endTime: "",
+            duration: 30,
+            description: "",
+            date: today,
+            syncedToRedmine: false,
+          },
+        ] as TimeLogEntry[],
+      };
+      redmineOverrides = userOverride;
+      render(<App />);
+      expect(capturedAppContext.todayMinutes).toBe(90);
+    });
+
+    it("API failure falls back to local unsynced only", () => {
+      weekRemoteEntriesOverride = [];
+      timeLogOverrides = {
+        entries: [
+          {
+            id: "e1",
+            issueId: 1,
+            issueSubject: "A",
+            projectId: 1,
+            projectName: "P",
+            startTime: "",
+            endTime: "",
+            duration: 45,
+            description: "",
+            date: today,
+            syncedToRedmine: false,
+          },
+          {
+            id: "e2",
+            issueId: 2,
+            issueSubject: "B",
+            projectId: 1,
+            projectName: "P",
+            startTime: "",
+            endTime: "",
+            duration: 60,
+            description: "",
+            date: today,
+            syncedToRedmine: true,
+          },
+        ] as TimeLogEntry[],
+      };
+      redmineOverrides = userOverride;
+      render(<App />);
+      expect(capturedAppContext.todayMinutes).toBe(45);
+    });
+
+    it("fetchWeekRemoteEntries is called on user login", () => {
+      redmineOverrides = userOverride;
+      render(<App />);
+      expect(mockFetchWeekRemoteEntries).toHaveBeenCalled();
+    });
   });
 });
