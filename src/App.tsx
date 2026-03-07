@@ -7,97 +7,56 @@ import { Snackbar } from "./components/ui";
 import { useRedmine } from "./hooks/useRedmine";
 import { useMultiTimer } from "./hooks/useMultiTimer";
 import { useTimeLog } from "./hooks/useTimeLog";
-import { usePinnedIssues } from "./hooks/usePinnedIssues";
-import { useFavorites } from "./hooks/useFavorites";
 import { useHashRouter } from "./hooks/useHashRouter";
-import { useVisibilityRefresh } from "./hooks/useVisibilityRefresh";
-import { useIssueMutationHandlers } from "./hooks/useIssueMutationHandlers";
-import { useTimerHandlers } from "./hooks/useTimerHandlers";
 import { useEntryHandlers } from "./hooks/useEntryHandlers";
 import { useSyncOrchestrator } from "./hooks/useSyncOrchestrator";
 import { useDialogManager } from "./hooks/useDialogManager";
 import { useSnackbar } from "./hooks/useSnackbar";
 import { useWeekRemoteEntries } from "./hooks/useWeekRemoteEntries";
+import { useInstances } from "./hooks/useInstances";
 import { toLocalDateString, getWeekKey } from "./lib/dates";
+import { api } from "./lib/api";
 import { AppProvider } from "./AppContext";
 import AppHeader from "./AppHeader";
 import AppContent from "./AppContent";
 import type { RedmineIssue } from "./types/redmine";
 
 export default function App() {
+  // Default instance for initial loading and fallback data
   const redmine = useRedmine();
   const { timers, activeId, elapsedMap, startOrResume, pause, capture, discard, adjustElapsed } =
     useMultiTimer();
   const timeLog = useTimeLog();
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const { t } = useI18n();
-  const pinned = usePinnedIssues();
-  const favorites = useFavorites();
   const { route, navigate } = useHashRouter();
+  const instancesHook = useInstances();
 
   const [error, setError] = useState<string | null>(null);
   const { snackbar, showSnackbar, dismissSnackbar } = useSnackbar();
   const { weekRemoteEntries, fetchWeekRemoteEntries } = useWeekRemoteEntries();
+
   useEffect(() => {
     if (redmine.user) {
-      redmine.fetchIssues();
       redmine.fetchActivities();
-      redmine.fetchStatuses();
-      redmine.fetchTrackers();
       fetchWeekRemoteEntries();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [redmine.user]);
-  const assignedIdSet = useMemo(() => new Set(redmine.issues.map((i) => i.id)), [redmine.issues]);
-  const mergedIssues = useMemo(() => pinned.pinnedIssues, [pinned.pinnedIssues]);
 
-  const allKnownIssues = useMemo(() => {
-    const pinnedIdSet = pinned.pinnedIds;
-    const extras = favorites.favoriteIssues.filter((i) => !pinnedIdSet.has(i.id));
-    return extras.length > 0 ? [...pinned.pinnedIssues, ...extras] : pinned.pinnedIssues;
-  }, [pinned.pinnedIssues, pinned.pinnedIds, favorites.favoriteIssues]);
+  // Determine active instance for tickets tab
+  const activeInstanceId = useMemo(() => {
+    if (route.instanceId) return route.instanceId;
+    if (instancesHook.instances.length > 0) return instancesHook.instances[0].id;
+    return "default";
+  }, [route.instanceId, instancesHook.instances]);
 
+  // Navigate to first instance if no instanceId in route and we have multi-instance
   useEffect(() => {
-    pinned.syncAssignedPins(redmine.issues);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [redmine.issues]);
-
-  const handleTogglePin = useCallback(
-    (issue: RedmineIssue) => {
-      const wasPinned = pinned.isPinned(issue.id);
-      pinned.toggle(issue);
-      if (wasPinned && assignedIdSet.has(issue.id)) {
-        pinned.hide(issue.id);
-      }
-    },
-    [pinned, assignedIdSet],
-  );
-
-  const handleToggleFavorite = useCallback(
-    (issue: RedmineIssue) => {
-      favorites.toggle(issue);
-    },
-    [favorites],
-  );
-
-  const handleToggleAssignedPin = useCallback(
-    (issue: RedmineIssue) => {
-      const wasPinned = pinned.isPinned(issue.id);
-      if (wasPinned) {
-        pinned.unpin(issue.id);
-        pinned.hide(issue.id);
-      } else {
-        pinned.pinSilent(issue);
-      }
-    },
-    [pinned],
-  );
-  const { lastFetchRef } = useVisibilityRefresh({
-    fetchIssues: redmine.fetchIssues,
-    refreshPinned: pinned.refreshPinned,
-    refreshRemoteEntries: redmine.refreshRemoteEntries,
-    refreshWeekRemoteEntries: fetchWeekRemoteEntries,
-  });
+    if (route.section === "tickets" && !route.instanceId && instancesHook.instances.length > 0) {
+      navigate({ section: "tickets", instanceId: instancesHook.instances[0].id });
+    }
+  }, [route.section, route.instanceId, instancesHook.instances, navigate]);
 
   const dialogManager = useDialogManager({
     addEntry: timeLog.addEntry,
@@ -106,41 +65,36 @@ export default function App() {
     startOrResume,
     issues: redmine.issues,
     activities: redmine.activities,
-    activitiesByProject: redmine.activitiesByProject,
-    fetchProjectActivities: redmine.fetchProjectActivities,
     setError,
   });
 
-  const mutations = useIssueMutationHandlers({
-    mergedIssues: allKnownIssues,
-    statuses: redmine.statuses,
-    trackers: redmine.trackers,
-    versionsByProject: redmine.versionsByProject,
-    refreshIssue: redmine.refreshIssue,
-    mergeIssue: redmine.mergeIssue,
-    updateIssueStatus: redmine.updateIssueStatus,
-    updateIssueTracker: redmine.updateIssueTracker,
-    updateIssueAssignee: redmine.updateIssueAssignee,
-    updateIssueVersion: redmine.updateIssueVersion,
-    updateIssueDoneRatio: redmine.updateIssueDoneRatio,
-    invalidateAllowedStatuses: redmine.invalidateAllowedStatuses,
-    fetchIssues: redmine.fetchIssues,
-    isPinned: pinned.isPinned,
-    updatePinnedIssue: pinned.updateIssue,
-    updateFavoriteIssue: favorites.updateIssue,
-    setSnackbar: showSnackbar,
-    onMutationSuccess: () => {
-      lastFetchRef.current = Date.now();
+  // Instance-aware createTimeEntry for sync orchestrator
+  const createTimeEntry = useCallback(
+    async (
+      instanceId: string,
+      issueId: number,
+      hours: number,
+      description: string,
+      activityId: number,
+      date: string,
+    ): Promise<number> => {
+      const prefix = `/api/i/${instanceId}`;
+      const data = await api<{ time_entry: { id: number } }>(`${prefix}/time_entries`, {
+        method: "POST",
+        body: JSON.stringify({
+          time_entry: {
+            issue_id: issueId,
+            hours,
+            comments: description,
+            activity_id: activityId,
+            spent_on: date,
+          },
+        }),
+      });
+      return data.time_entry.id;
     },
-    t,
-  });
-
-  const timerHandlers = useTimerHandlers({
-    activeId,
-    startOrResume,
-    capture,
-    setBookDialog: dialogManager.setBookDialog,
-  });
+    [],
+  );
 
   const entryHandlers = useEntryHandlers({
     entries: timeLog.entries,
@@ -157,13 +111,14 @@ export default function App() {
   const syncOrch = useSyncOrchestrator({
     entries: timeLog.entries,
     markSynced: timeLog.markSynced,
-    createTimeEntry: redmine.createTimeEntry,
+    createTimeEntry,
     refreshRemoteEntries: redmine.refreshRemoteEntries,
     setSyncDialog: dialogManager.setSyncDialog,
     setSnackbar: showSnackbar,
     setError,
     t,
   });
+
   const syncedCount = useMemo(
     () => timeLog.entries.filter((e) => e.syncedToRedmine).length,
     [timeLog.entries],
@@ -200,59 +155,33 @@ export default function App() {
   }, [timeLog.entries, weekRemoteEntries, currentWeekKey]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const issuesSnapshotRef = useRef<string>("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = useCallback(() => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    lastFetchRef.current = Date.now();
 
-    const snapshot = redmine.issues
-      .map((i) => `${i.id}:${i.updated_on}`)
-      .sort()
-      .join("|");
-    issuesSnapshotRef.current = snapshot;
+    // Trigger refresh in InstanceTicketView + shared data
+    setRefreshTrigger((prev) => prev + 1);
+    fetchWeekRemoteEntries();
 
-    const minDelay = new Promise((r) => setTimeout(r, 1200));
-    try {
-      const [newIssues] = await Promise.all([
-        redmine.fetchIssues(),
-        pinned.refreshPinned(),
-        fetchWeekRemoteEntries(),
-        minDelay,
-      ]);
-      const newSnapshot = newIssues
-        .map((i) => `${i.id}:${i.updated_on}`)
-        .sort()
-        .join("|");
+    // Minimum visible refresh time
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1200);
+  }, [isRefreshing, fetchWeekRemoteEntries]);
 
-      if (newSnapshot !== issuesSnapshotRef.current) {
-        const oldIds = new Set(redmine.issues.map((i) => i.id));
-        const changedCount = newIssues.filter((i) => {
-          const old = redmine.issues.find((o) => o.id === i.id);
-          return !old || old.updated_on !== i.updated_on;
-        }).length;
-        const newCount = newIssues.filter((i) => !oldIds.has(i.id)).length;
-        showSnackbar(t.refreshUpdated(changedCount + newCount));
+  const onRefreshComplete = useCallback(
+    (changed: boolean, changedCount: number) => {
+      if (changed) {
+        showSnackbar(t.refreshUpdated(changedCount));
       } else {
         showSnackbar(t.refreshNoChanges);
       }
-    } catch {
-      showSnackbar(t.refreshFailed);
-    } finally {
-      setIsRefreshing(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    isRefreshing,
-    lastFetchRef,
-    redmine.issues,
-    redmine.fetchIssues,
-    pinned.refreshPinned,
-    fetchWeekRemoteEntries,
-    showSnackbar,
-    t,
-  ]);
+    },
+    [showSnackbar, t],
+  );
+
   if (redmine.loading && !redmine.user) {
     return (
       <div className="bg-surface-dim flex min-h-screen items-center justify-center">
@@ -302,6 +231,8 @@ export default function App() {
     loading: redmine.loading,
     isRefreshing,
     onRefresh,
+    instances: instancesHook.instances,
+    activeInstanceId,
   };
 
   return (
@@ -327,63 +258,38 @@ export default function App() {
           activeSection={route.section}
           route={route}
           navigate={navigate}
-          mergedIssues={mergedIssues}
-          assignedIdSet={assignedIdSet}
-          assignedIssues={redmine.issues}
-          issues={redmine.issues}
-          pinnedIds={pinned.pinnedIds}
-          pinnedIssues={pinned.pinnedIssues}
-          onTogglePin={handleTogglePin}
-          onToggleAssignedPin={handleToggleAssignedPin}
-          favoriteIds={favorites.favoriteIds}
-          favoriteIssues={favorites.favoriteIssues}
-          onToggleFavorite={handleToggleFavorite}
+          activeInstanceId={activeInstanceId}
           timers={timers}
-          activeId={activeId}
+          activeTimerKey={activeId}
           elapsedMap={elapsedMap}
           onPause={pause}
-          onDiscard={discard}
-          onAdjust={adjustElapsed}
-          loading={redmine.loading}
+          startOrResume={startOrResume}
+          capture={capture}
+          discard={discard}
+          adjustElapsed={adjustElapsed}
+          setBookDialog={dialogManager.setBookDialog}
+          showSnackbar={showSnackbar}
+          refreshTrigger={refreshTrigger}
+          onRefreshComplete={onRefreshComplete}
+          entries={timeLog.entries}
           activities={redmine.activities}
           activitiesByProject={redmine.activitiesByProject}
-          statuses={redmine.statuses}
-          trackers={redmine.trackers}
-          trackersByProject={redmine.trackersByProject}
-          allowedStatusesByIssue={redmine.allowedStatusesByIssue}
-          membersByProject={redmine.membersByProject}
-          versionsByProject={redmine.versionsByProject}
-          redmineUrl={redmine.redmineUrl}
-          issueDescriptions={redmine.issueDescriptions}
-          issueComments={redmine.issueComments}
-          issueSubjects={redmine.issueSubjects}
-          remoteEntries={redmine.remoteEntries}
-          remoteLoading={redmine.remoteLoading}
           onFetchProjectActivities={redmine.fetchProjectActivities}
-          onFetchProjectTrackers={redmine.fetchProjectTrackers}
-          onFetchAllowedStatuses={redmine.fetchAllowedStatuses}
-          onFetchMembers={redmine.fetchProjectMembers}
-          onFetchVersions={redmine.fetchProjectVersions}
-          onFetchIssueDescription={redmine.fetchIssueDescription}
-          fetchIssueSubject={redmine.fetchIssueSubject}
-          fetchRemoteEntries={redmine.fetchRemoteEntries}
-          refreshRemoteEntries={redmine.refreshRemoteEntries}
-          onStatusChange={mutations.handleStatusChange}
-          onTrackerChange={mutations.handleTrackerChange}
-          onAssigneeChange={mutations.handleAssigneeChange}
-          onVersionChange={mutations.handleVersionChange}
-          onDoneRatioChange={mutations.handleDoneRatioChange}
-          onPlay={timerHandlers.handlePlay}
-          onSave={timerHandlers.handleSave}
-          onOpenBookDialog={timerHandlers.handleOpenBookDialog}
-          onDelete={entryHandlers.handleDelete}
-          onUpdateDuration={entryHandlers.handleUpdateDuration}
-          onUpdateActivity={entryHandlers.handleUpdateActivity}
           onSyncEntry={syncOrch.handleSyncEntry}
           onOpenSyncDialog={syncOrch.handleOpenSyncDialog}
           onEditEntry={(entry) => dialogManager.setEditDialog(entry)}
-          entries={timeLog.entries}
+          onDelete={entryHandlers.handleDelete}
+          onUpdateDuration={entryHandlers.handleUpdateDuration}
+          onUpdateActivity={entryHandlers.handleUpdateActivity}
           onShowMessage={showSnackbar}
+          remoteEntries={redmine.remoteEntries}
+          remoteLoading={redmine.remoteLoading}
+          fetchRemoteEntries={redmine.fetchRemoteEntries}
+          refreshRemoteEntries={redmine.refreshRemoteEntries}
+          issues={redmine.issues}
+          issueSubjects={redmine.issueSubjects}
+          fetchIssueSubject={redmine.fetchIssueSubject}
+          redmineUrl={redmine.redmineUrl}
         />
 
         {dialogManager.bookDialog && (
@@ -398,7 +304,7 @@ export default function App() {
             activities={dialogManager.bookDialogActivities}
             onSave={dialogManager.handleBookConfirm}
             onCancel={dialogManager.handleBookCancel}
-            onDoneRatioChange={mutations.handleDoneRatioChange}
+            onDoneRatioChange={async () => {}}
           />
         )}
 
@@ -423,7 +329,7 @@ export default function App() {
               redmine.issues.find((i: RedmineIssue) => i.id === dialogManager.editDialog!.issueId)
                 ?.done_ratio
             }
-            onDoneRatioChange={mutations.handleDoneRatioChange}
+            onDoneRatioChange={async () => {}}
             onSave={entryHandlers.handleEdit}
             onCancel={() => dialogManager.setEditDialog(null)}
           />

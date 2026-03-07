@@ -81,6 +81,7 @@ interface Props {
   syncing: boolean;
   activities: RedmineActivity[];
   redmineUrl: string;
+  instanceName?: string;
   onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -94,6 +95,7 @@ export function DayDetailEntry({
   syncing,
   activities,
   redmineUrl,
+  instanceName,
   onToggleSelect,
   onEdit,
   onDelete,
@@ -144,6 +146,9 @@ export function DayDetailEntry({
           <div className="de-card__meta">
             <IssueBadge issueId={entry.issueId} redmineUrl={redmineUrl} />
             <span className="de-card__meta-chip de-card__meta-project">{entry.projectName}</span>
+            {instanceName && (
+              <span className="de-card__meta-chip de-card__meta-instance">{instanceName}</span>
+            )}
             {activityName && (
               <span className="de-card__meta-chip de-card__meta-activity">{activityName}</span>
             )}

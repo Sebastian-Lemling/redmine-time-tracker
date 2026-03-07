@@ -15,6 +15,7 @@ const entry: TimeLogEntry = {
   description: "Worked on fix",
   date: "2026-03-01",
   syncedToRedmine: false,
+  instanceId: "default",
 };
 
 const baseProps = {

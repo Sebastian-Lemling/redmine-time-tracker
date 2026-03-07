@@ -15,6 +15,7 @@ const entry: TimeLogEntry = {
   date: "2026-03-01",
   description: "Fixed auth flow",
   syncedToRedmine: false,
+  instanceId: "default",
 };
 
 const activities: RedmineActivity[] = [

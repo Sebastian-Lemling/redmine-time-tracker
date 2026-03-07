@@ -5,17 +5,12 @@ import { useProjectData } from "./useProjectData";
 import { useIssueDetails } from "./useIssueDetails";
 import { useRemoteEntries } from "./useRemoteEntries";
 
-/**
- * Facade hook — composes the 5 split hooks and exposes the same interface
- * as the original monolithic useRedmine. Will be removed at the end of Phase 3
- * when consumers are migrated to use the individual hooks directly.
- */
-export function useRedmine() {
-  const user = useUser();
-  const issueCache = useIssueCache();
-  const projectData = useProjectData();
-  const issueDetails = useIssueDetails();
-  const remoteEntries = useRemoteEntries();
+export function useRedmine(instanceId?: string) {
+  const user = useUser(instanceId);
+  const issueCache = useIssueCache(instanceId);
+  const projectData = useProjectData(instanceId);
+  const issueDetails = useIssueDetails(instanceId);
+  const remoteEntries = useRemoteEntries(instanceId);
 
   return useMemo(
     () => ({

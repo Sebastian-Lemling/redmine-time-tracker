@@ -2,7 +2,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { roundUpToStep } from "../lib/timeConfig";
 import { safeGet, safeSet, safeRemove } from "../lib/storage";
 import { logger } from "../lib/logger";
-import type { TimerState, MultiTimerMap, ActiveTimerId } from "../types/redmine";
+import {
+  timerKey,
+  DEFAULT_INSTANCE_ID,
+  type TimerState,
+  type MultiTimerMap,
+  type ActiveTimerKey,
+  type TimerKey,
+} from "../types/redmine";
 
 const STORAGE_KEY = "multiTimers";
 const OLD_STORAGE_KEY = "activeTimer";
@@ -10,7 +17,7 @@ const MAX_TIMERS = 10;
 
 interface StoredState {
   timers: MultiTimerMap;
-  activeId: ActiveTimerId;
+  activeId: ActiveTimerKey;
 }
 
 export interface SaveResult {
@@ -21,18 +28,55 @@ export interface SaveResult {
   startTime: string;
   endTime: string;
   durationMinutes: number;
+  instanceId: string;
+}
+
+function migrateNumericKeys(raw: StoredState): StoredState {
+  const timers: MultiTimerMap = {};
+  let activeId: ActiveTimerKey = raw.activeId;
+  let migrated = false;
+
+  for (const [key, timer] of Object.entries(raw.timers)) {
+    const inst = timer.instanceId || DEFAULT_INSTANCE_ID;
+    if (!timer.instanceId) {
+      timer.instanceId = inst;
+      migrated = true;
+    }
+    // If key is a bare number, migrate to composite key
+    if (/^\d+$/.test(key)) {
+      const newKey = timerKey(inst, Number(key));
+      timers[newKey] = timer;
+      if (String(activeId) === key) {
+        activeId = newKey;
+      }
+      migrated = true;
+    } else {
+      timers[key] = timer;
+    }
+  }
+
+  if (migrated) {
+    const state: StoredState = { timers, activeId };
+    safeSet(STORAGE_KEY, state);
+    return state;
+  }
+
+  return raw;
 }
 
 function loadState(): StoredState {
   const saved = safeGet<StoredState | null>(STORAGE_KEY, null);
-  if (saved && typeof saved.timers === "object") return saved;
+  if (saved && typeof saved.timers === "object") return migrateNumericKeys(saved);
 
   // Migrate from old single-timer format
   const oldTimer = safeGet<TimerState | null>(OLD_STORAGE_KEY, null);
   if (oldTimer && oldTimer.issueId) {
+    const inst = oldTimer.instanceId || DEFAULT_INSTANCE_ID;
+    oldTimer.instanceId = inst;
+    const key = timerKey(inst, oldTimer.issueId);
     const migrated: StoredState = {
-      timers: { [oldTimer.issueId]: oldTimer },
-      activeId: oldTimer.pausedAt ? null : oldTimer.issueId,
+      timers: { [key]: oldTimer },
+      activeId: oldTimer.pausedAt ? null : key,
     };
     safeSet(STORAGE_KEY, migrated);
     safeRemove(OLD_STORAGE_KEY);
@@ -68,10 +112,9 @@ function calcDurationMinutes(timer: TimerState): number {
 export function useMultiTimer() {
   const [initialState] = useState(loadState);
   const [timers, setTimers] = useState<MultiTimerMap>(initialState.timers);
-  const [activeId, setActiveId] = useState<ActiveTimerId>(initialState.activeId);
-  const [elapsedMap, setElapsedMap] = useState<Record<number, number>>({});
+  const [activeId, setActiveId] = useState<ActiveTimerKey>(initialState.activeId);
+  const [elapsedMap, setElapsedMap] = useState<Record<TimerKey, number>>({});
 
-  // Refs for synchronous access in callbacks
   const timersRef = useRef(timers);
   const activeIdRef = useRef(activeId);
   useEffect(() => {
@@ -120,14 +163,14 @@ export function useMultiTimer() {
   useEffect(() => {
     const tick = () => {
       const current = timersRef.current;
-      const ids = Object.keys(current);
-      if (ids.length === 0) {
+      const keys = Object.keys(current);
+      if (keys.length === 0) {
         setElapsedMap({});
         return;
       }
-      const map: Record<number, number> = {};
-      for (const id of ids) {
-        map[Number(id)] = calcElapsed(current[Number(id)]);
+      const map: Record<TimerKey, number> = {};
+      for (const key of keys) {
+        map[key] = calcElapsed(current[key]);
       }
       setElapsedMap(map);
     };
@@ -144,71 +187,77 @@ export function useMultiTimer() {
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [timers]); // re-setup when timers map changes structurally
+  }, [timers]);
 
   const startOrResume = useCallback(
-    (issueId: number, issueSubject: string, projectName: string, projectId?: number) => {
+    (
+      instanceId: string,
+      issueId: number,
+      issueSubject: string,
+      projectName: string,
+      projectId?: number,
+    ) => {
+      const key = timerKey(instanceId, issueId);
       setTimers((prev) => {
         const next = { ...prev };
-        const currentActiveId = activeIdRef.current;
+        const currentActiveKey = activeIdRef.current;
 
-        if (currentActiveId != null && currentActiveId !== issueId && next[currentActiveId]) {
-          const active = next[currentActiveId];
+        if (currentActiveKey != null && currentActiveKey !== key && next[currentActiveKey]) {
+          const active = next[currentActiveKey];
           if (!active.pausedAt) {
-            next[currentActiveId] = {
+            next[currentActiveKey] = {
               ...active,
               pausedAt: new Date().toISOString(),
             };
           }
         }
 
-        if (next[issueId]) {
-          const existing = next[issueId];
+        if (next[key]) {
+          const existing = next[key];
           if (existing.pausedAt) {
             const pauseDuration = Date.now() - new Date(existing.pausedAt).getTime();
-            next[issueId] = {
+            next[key] = {
               ...existing,
               pausedAt: undefined,
               totalPausedMs: (existing.totalPausedMs || 0) + pauseDuration,
             };
           }
         } else {
-          // Check soft cap
           if (Object.keys(next).length >= MAX_TIMERS) {
-            return prev; // don't start new timer
+            return prev;
           }
-          next[issueId] = {
+          next[key] = {
             issueId,
             issueSubject,
             projectId,
             projectName,
             startTime: new Date().toISOString(),
+            instanceId,
           };
         }
 
         return next;
       });
-      setActiveId(issueId);
+      setActiveId(key);
     },
     [],
   );
 
   const pause = useCallback(() => {
     setTimers((prev) => {
-      const id = activeIdRef.current;
-      if (id == null || !prev[id] || prev[id].pausedAt) return prev;
+      const key = activeIdRef.current;
+      if (key == null || !prev[key] || prev[key].pausedAt) return prev;
       return {
         ...prev,
-        [id]: { ...prev[id], pausedAt: new Date().toISOString() },
+        [key]: { ...prev[key], pausedAt: new Date().toISOString() },
       };
     });
     setActiveId(null);
   }, []);
 
-  /** Save a timer: compute duration, remove from map, return result for dialog */
-  const save = useCallback((issueId: number): SaveResult | null => {
+  const save = useCallback((key: TimerKey): SaveResult | null => {
     const current = timersRef.current;
-    const timer = current[issueId];
+    const timer = current[key];
     if (!timer) return null;
 
     const endTime = new Date().toISOString();
@@ -216,10 +265,10 @@ export function useMultiTimer() {
 
     setTimers((prev) => {
       const next = { ...prev };
-      delete next[issueId];
+      delete next[key];
       return next;
     });
-    setActiveId((prev) => (prev === issueId ? null : prev));
+    setActiveId((prev: ActiveTimerKey) => (prev === key ? null : prev));
 
     return {
       issueId: timer.issueId,
@@ -229,13 +278,13 @@ export function useMultiTimer() {
       startTime: timer.startTime,
       endTime,
       durationMinutes,
+      instanceId: timer.instanceId,
     };
   }, []);
 
-  /** Capture a timer: pause + compute duration, but keep it in the map */
-  const capture = useCallback((issueId: number): SaveResult | null => {
+  const capture = useCallback((key: TimerKey): SaveResult | null => {
     const current = timersRef.current;
-    const timer = current[issueId];
+    const timer = current[key];
     if (!timer) return null;
 
     const endTime = new Date().toISOString();
@@ -243,14 +292,14 @@ export function useMultiTimer() {
 
     if (!timer.pausedAt) {
       setTimers((prev) => {
-        if (!prev[issueId]) return prev;
+        if (!prev[key]) return prev;
         return {
           ...prev,
-          [issueId]: { ...prev[issueId], pausedAt: new Date().toISOString() },
+          [key]: { ...prev[key], pausedAt: new Date().toISOString() },
         };
       });
     }
-    setActiveId((prev) => (prev === issueId ? null : prev));
+    setActiveId((prev: ActiveTimerKey) => (prev === key ? null : prev));
 
     return {
       issueId: timer.issueId,
@@ -260,19 +309,20 @@ export function useMultiTimer() {
       startTime: timer.startTime,
       endTime,
       durationMinutes,
+      instanceId: timer.instanceId,
     };
   }, []);
 
-  const adjustElapsed = useCallback((issueId: number, deltaSec: number) => {
+  const adjustElapsed = useCallback((key: TimerKey, deltaSec: number) => {
     setTimers((prev) => {
-      const t = prev[issueId];
+      const t = prev[key];
       if (!t) return prev;
       const currentElapsed = calcElapsed(t);
       const effectiveDelta = Math.max(deltaSec, -currentElapsed);
       if (effectiveDelta === 0) return prev;
       return {
         ...prev,
-        [issueId]: {
+        [key]: {
           ...t,
           totalPausedMs: (t.totalPausedMs || 0) - effectiveDelta * 1000,
         },
@@ -280,13 +330,13 @@ export function useMultiTimer() {
     });
   }, []);
 
-  const discard = useCallback((issueId: number) => {
+  const discard = useCallback((key: TimerKey) => {
     setTimers((prev) => {
       const next = { ...prev };
-      delete next[issueId];
+      delete next[key];
       return next;
     });
-    setActiveId((prev) => (prev === issueId ? null : prev));
+    setActiveId((prev: ActiveTimerKey) => (prev === key ? null : prev));
   }, []);
 
   const timerCount = Object.keys(timers).length;

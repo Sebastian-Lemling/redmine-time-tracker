@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useContext } from "react";
 import { Check, Loader2, Minus, Clock, ArrowUp, ArrowDown } from "lucide-react";
 import type {
   TimeLogEntry as TEntry,
@@ -14,6 +14,7 @@ import {
   getProjectColor,
 } from "./DayDetailEntry";
 import { useI18n } from "../../i18n/I18nContext";
+import { AppContext } from "../../AppContext";
 
 interface Props {
   selectedDate: string;
@@ -59,6 +60,13 @@ export function DayDetailPanel({
   onUpdateDuration,
 }: Props) {
   const { t } = useI18n();
+  const appCtx = useContext(AppContext);
+  const instances = appCtx?.instances;
+  const multiInstance = (instances?.length ?? 0) > 1;
+  const instanceNameMap = useMemo(() => {
+    if (!multiInstance || !instances) return null;
+    return new Map(instances.map((inst) => [inst.id, inst.name]));
+  }, [instances, multiInstance]);
   const setSelectedIds = onSelectionChange;
   const [syncingIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<"time" | "project" | "duration">("time");
@@ -265,6 +273,7 @@ export function DayDetailPanel({
                         syncing={syncingIds.has(entry.id)}
                         activities={getEntryActivities(entry)}
                         redmineUrl={redmineUrl}
+                        instanceName={instanceNameMap?.get(entry.instanceId)}
                         onToggleSelect={() => {
                           const n = new Set(selectedIds);
                           if (n.has(entry.id)) n.delete(entry.id);
@@ -321,6 +330,11 @@ export function DayDetailPanel({
                             <span className="de-card__meta-chip de-card__meta-project">
                               {re.project.name}
                             </span>
+                            {multiInstance && re.instanceName && (
+                              <span className="de-card__meta-chip de-card__meta-instance">
+                                {re.instanceName}
+                              </span>
+                            )}
                             <span className="de-card__meta-chip de-card__meta-activity">
                               {re.activity.name}
                             </span>

@@ -23,6 +23,7 @@ function makeEntry(overrides?: Partial<TimeLogEntry>): TimeLogEntry {
     startTime: "2026-03-03T08:00:00Z",
     endTime: "2026-03-03T09:00:00Z",
     syncedToRedmine: false,
+    instanceId: "default",
     ...overrides,
   };
 }
@@ -93,6 +94,7 @@ describe("useTimeLog", () => {
           activityId: 9,
           startTime: "2026-03-03T08:00:00Z",
           endTime: "2026-03-03T09:00:00Z",
+          instanceId: "default",
         });
       });
 
@@ -124,6 +126,7 @@ describe("useTimeLog", () => {
           activityId: 9,
           startTime: "2026-03-03T08:00:00Z",
           endTime: "2026-03-03T09:00:00Z",
+          instanceId: "default",
         });
       });
 
@@ -150,6 +153,7 @@ describe("useTimeLog", () => {
             activityId: 9,
             startTime: "2026-03-03T08:00:00Z",
             endTime: "2026-03-03T09:00:00Z",
+            instanceId: "default",
           });
         }),
       ).rejects.toThrow("fail");

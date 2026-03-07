@@ -76,6 +76,7 @@ export function createTimeLogEntry(overrides?: Partial<TimeLogEntry>): TimeLogEn
     description: "",
     date: "2026-03-03",
     syncedToRedmine: false,
+    instanceId: "default",
     ...overrides,
   };
 }
@@ -86,6 +87,7 @@ export function createTimerState(overrides?: Partial<TimerState>): TimerState {
     issueSubject: "Test Issue",
     projectName: "Test Project",
     startTime: new Date().toISOString(),
+    instanceId: "default",
     ...overrides,
   };
 }

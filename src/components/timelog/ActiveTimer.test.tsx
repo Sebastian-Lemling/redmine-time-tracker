@@ -8,6 +8,7 @@ const timer: TimerState = {
   issueSubject: "Fix login bug",
   projectName: "Main Project",
   startTime: new Date().toISOString(),
+  instanceId: "default",
 };
 
 const baseProps = {

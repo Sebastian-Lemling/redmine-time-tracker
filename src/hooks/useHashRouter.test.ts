@@ -60,6 +60,17 @@ describe("parseHash", () => {
     expect(parseHash("#/")).toEqual({ section: "tickets" });
     expect(parseHash("")).toEqual({ section: "tickets" });
   });
+
+  it("#/tickets/myinstance → {section: tickets, instanceId: myinstance}", () => {
+    expect(parseHash("#/tickets/myinstance")).toEqual({
+      section: "tickets",
+      instanceId: "myinstance",
+    });
+  });
+
+  it("#/tickets without instanceId → {section: tickets} only", () => {
+    expect(parseHash("#/tickets")).toEqual({ section: "tickets" });
+  });
 });
 
 describe("buildHash", () => {
@@ -92,6 +103,14 @@ describe("buildHash", () => {
 
   it("no section defaults to tickets", () => {
     expect(buildHash({})).toBe("#/tickets");
+  });
+
+  it("tickets with instanceId → #/tickets/:instanceId", () => {
+    expect(buildHash({ section: "tickets", instanceId: "prod" })).toBe("#/tickets/prod");
+  });
+
+  it("tickets without instanceId → #/tickets", () => {
+    expect(buildHash({ section: "tickets" })).toBe("#/tickets");
   });
 });
 
@@ -140,5 +159,22 @@ describe("useHashRouter", () => {
     });
     expect(result.current.route.section).toBe("timelog");
     expect(result.current.route.year).toBe(2026);
+  });
+
+  it("navigate to tickets with instanceId updates hash", () => {
+    const spy = vi.spyOn(history, "pushState");
+    const { result } = renderHook(() => useHashRouter());
+    act(() => result.current.navigate({ section: "tickets", instanceId: "prod" }));
+    expect(spy).toHaveBeenCalledWith(null, "", "#/tickets/prod");
+    expect(result.current.route.instanceId).toBe("prod");
+    spy.mockRestore();
+  });
+
+  it("switching from tickets to timelog clears instanceId", () => {
+    window.location.hash = "#/tickets/prod";
+    const { result } = renderHook(() => useHashRouter());
+    act(() => result.current.navigate({ section: "timelog" }));
+    expect(result.current.route.section).toBe("timelog");
+    expect(result.current.route.instanceId).toBeUndefined();
   });
 });

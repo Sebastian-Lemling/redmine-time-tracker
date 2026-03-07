@@ -18,6 +18,7 @@ function makeEntry(overrides?: Partial<TimeLogEntry>): TimeLogEntry {
     description: "worked",
     date: "2025-03-01",
     syncedToRedmine: false,
+    instanceId: "default",
     ...overrides,
   } as TimeLogEntry;
 }
@@ -49,7 +50,7 @@ describe("useSyncOrchestrator", () => {
       await result.current.handleSyncEntry("e1", 5);
     });
 
-    expect(deps.createTimeEntry).toHaveBeenCalledWith(100, 1, "worked", 5, "2025-03-01");
+    expect(deps.createTimeEntry).toHaveBeenCalledWith("default", 100, 1, "worked", 5, "2025-03-01");
     expect(deps.markSynced).toHaveBeenCalledWith("e1", 42);
     expect(deps.refreshRemoteEntries).toHaveBeenCalled();
   });
@@ -73,7 +74,7 @@ describe("useSyncOrchestrator", () => {
       await result.current.handleSync("e1", 5);
     });
 
-    expect(deps.createTimeEntry).toHaveBeenCalledWith(100, 1, "worked", 5, "2025-03-01");
+    expect(deps.createTimeEntry).toHaveBeenCalledWith("default", 100, 1, "worked", 5, "2025-03-01");
     expect(deps.markSynced).toHaveBeenCalledWith("e1", 42);
     expect(deps.setSyncDialog).toHaveBeenCalledWith(null);
     expect(deps.refreshRemoteEntries).toHaveBeenCalled();
@@ -264,6 +265,82 @@ describe("useSyncOrchestrator", () => {
       });
 
       expect(deps.createTimeEntry).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("multi-instance routing", () => {
+    it("handleSyncEntry passes correct instanceId for non-default instance", async () => {
+      const entry = makeEntry({ id: "e1", instanceId: "staging", issueId: 200 });
+      const deps = makeDeps({ entries: [entry] });
+      const { result } = renderHook(() => useSyncOrchestrator(deps));
+
+      await act(async () => {
+        await result.current.handleSyncEntry("e1", 7);
+      });
+
+      expect(deps.createTimeEntry).toHaveBeenCalledWith(
+        "staging",
+        200,
+        1,
+        "worked",
+        7,
+        "2025-03-01",
+      );
+    });
+
+    it("handleSync passes correct instanceId for non-default instance", async () => {
+      const entry = makeEntry({ id: "e1", instanceId: "production", issueId: 300 });
+      const deps = makeDeps({ entries: [entry] });
+      const { result } = renderHook(() => useSyncOrchestrator(deps));
+
+      await act(async () => {
+        await result.current.handleSync("e1", 9);
+      });
+
+      expect(deps.createTimeEntry).toHaveBeenCalledWith(
+        "production",
+        300,
+        1,
+        "worked",
+        9,
+        "2025-03-01",
+      );
+    });
+
+    it("handleSyncAll routes each entry to its own instance", async () => {
+      const entries = [
+        makeEntry({ id: "e1", instanceId: "staging", issueId: 10, activityId: 3 }),
+        makeEntry({ id: "e2", instanceId: "production", issueId: 20, activityId: 5 }),
+      ];
+      const deps = makeDeps({ entries });
+      const { result } = renderHook(() => useSyncOrchestrator(deps));
+
+      act(() => {
+        result.current.handleSyncAll();
+      });
+
+      // First entry opens dialog
+      expect(deps.setSyncDialog).toHaveBeenCalledWith(entries[0]);
+      expect(entries[0].instanceId).toBe("staging");
+
+      // Sync first entry
+      await act(async () => {
+        await result.current.handleSync("e1", 3);
+      });
+
+      expect(deps.createTimeEntry).toHaveBeenCalledWith(
+        "staging",
+        10,
+        1,
+        "worked",
+        3,
+        "2025-03-01",
+      );
+
+      // Second entry should open dialog next
+      const lastDialogCall =
+        deps.setSyncDialog.mock.calls[deps.setSyncDialog.mock.calls.length - 1];
+      expect(lastDialogCall[0]?.instanceId).toBe("production");
     });
   });
 

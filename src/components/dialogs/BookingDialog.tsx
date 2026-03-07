@@ -18,6 +18,7 @@ export interface BookingDialogData {
   endTime?: string;
   wasRunning?: boolean;
   doneRatio?: number;
+  instanceId?: string;
 }
 
 interface Props {

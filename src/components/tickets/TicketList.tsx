@@ -19,7 +19,6 @@ import type {
   RedmineVersion,
   RedmineJournal,
   MultiTimerMap,
-  ActiveTimerId,
 } from "../../types/redmine";
 import { TicketListToolbar } from "./TicketListToolbar";
 import { DragOverlayHeader } from "./ProjectGroupHeader";
@@ -33,7 +32,7 @@ import { useI18n } from "../../i18n/I18nContext";
 interface Props {
   issues: RedmineIssue[];
   timers: MultiTimerMap;
-  activeId: ActiveTimerId;
+  activeId: number | null;
   elapsedMap: Record<number, number>;
   loading: boolean;
   statuses: RedmineStatus[];

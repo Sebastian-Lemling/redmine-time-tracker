@@ -62,7 +62,13 @@ describe("useTicketGrouping", () => {
   it("showTrackedOnly filters to issues with active timers", () => {
     const issues = [makeIssue(1, "P"), makeIssue(2, "P"), makeIssue(3, "Q")];
     const timers: MultiTimerMap = {
-      2: { issueId: 2, issueSubject: "x", projectName: "P", startTime: "2025-01-01" },
+      2: {
+        issueId: 2,
+        issueSubject: "x",
+        projectName: "P",
+        startTime: "2025-01-01",
+        instanceId: "default",
+      },
     };
     const { result } = renderHook(() =>
       useTicketGrouping({ issues, timers, showTrackedOnly: true }),
@@ -116,7 +122,7 @@ describe("useTicketGrouping", () => {
       expect(result.current.grouped["Alpha"]).toHaveLength(1);
     });
 
-    it("returns all groups when favoriteIds is empty", () => {
+    it("returns empty groups when favoriteIds is empty", () => {
       const issues = [makeIssue(1, "Alpha")];
       const favoriteIds = new Set<number>();
       const { result } = renderHook(() =>
@@ -128,15 +134,15 @@ describe("useTicketGrouping", () => {
           favoriteIds,
         }),
       );
-      expect(result.current.grouped["Alpha"]).toHaveLength(1);
+      expect(Object.keys(result.current.grouped)).toHaveLength(0);
     });
 
-    it("returns all groups when favoriteIds is undefined", () => {
+    it("returns empty groups when favoriteIds is undefined", () => {
       const issues = [makeIssue(1, "Alpha")];
       const { result } = renderHook(() =>
         useTicketGrouping({ issues, timers: {}, showTrackedOnly: false, showFavoritesGroup: true }),
       );
-      expect(result.current.grouped["Alpha"]).toHaveLength(1);
+      expect(Object.keys(result.current.grouped)).toHaveLength(0);
     });
 
     it("works with showTrackedOnly", () => {
@@ -144,7 +150,13 @@ describe("useTicketGrouping", () => {
       const favoriteIds = new Set([1, 2]);
       const favoriteIssues = issues.filter((i) => favoriteIds.has(i.id));
       const timers: MultiTimerMap = {
-        1: { issueId: 1, issueSubject: "x", projectName: "P", startTime: "2025-01-01" },
+        1: {
+          issueId: 1,
+          issueSubject: "x",
+          projectName: "P",
+          startTime: "2025-01-01",
+          instanceId: "default",
+        },
       };
       const { result } = renderHook(() =>
         useTicketGrouping({

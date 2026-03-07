@@ -4,7 +4,7 @@ import { execFileSync, spawn } from "child_process";
 import { writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { set } from "./credentials.js";
+import { setForInstance, saveInstances } from "./credentials.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = join(__dirname, "..", ".env");
@@ -125,6 +125,123 @@ async function testConnection(url, apiKey) {
   }
 }
 
+function generateInstanceId(name, existingIds) {
+  let base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (!base) base = "instance";
+  let candidate = base;
+  let counter = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `${base}-${counter++}`;
+  }
+  return candidate;
+}
+
+async function collectInstance(instanceNumber, existingIds) {
+  console.log(`\n  ${BOLD}Instance ${instanceNumber}${RESET}\n`);
+
+  const name = (await ask(`  ${DIM}Name (tab label)${RESET}  `)) || `Redmine ${instanceNumber}`;
+  const url = await ask(`  ${DIM}Redmine URL${RESET}      `);
+  const apiKey = await ask(`  ${DIM}API Key${RESET}          `);
+
+  if (!url || !apiKey) {
+    console.error(`\n  ${RED}✖${RESET} URL and API Key are required.\n`);
+    return null;
+  }
+
+  const cleanUrl = url.replace(/\/$/, "");
+  console.log();
+  if (!(await testConnection(cleanUrl, apiKey))) return null;
+
+  const id = instanceNumber === 1 ? "default" : generateInstanceId(name, existingIds);
+
+  return { id, name, url: cleanUrl, apiKey };
+}
+
+async function setupLocal() {
+  const storeLabel =
+    platform() === "darwin"
+      ? "macOS Keychain"
+      : platform() === "linux"
+        ? "secret-tool (GNOME Keyring / KWallet)"
+        : ".env file";
+
+  console.log(`\n  Credentials will be stored in: ${DIM}${storeLabel}${RESET}`);
+
+  const collectedInstances = [];
+  const existingIds = new Set();
+  let instanceNumber = 1;
+
+  // Collect first instance
+  const first = await collectInstance(instanceNumber, existingIds);
+  if (!first) process.exit(1);
+  collectedInstances.push(first);
+  existingIds.add(first.id);
+  instanceNumber++;
+
+  // Ask for additional instances
+  let addMore = true;
+  while (addMore) {
+    console.log();
+    const answer = await select("Would you like to add another Redmine instance?", [
+      { label: "No, that's all", value: "no" },
+      { label: "Yes, add another instance", value: "yes" },
+    ]);
+
+    if (answer === "yes") {
+      const inst = await collectInstance(instanceNumber, existingIds);
+      if (inst) {
+        collectedInstances.push(inst);
+        existingIds.add(inst.id);
+        instanceNumber++;
+      }
+    } else {
+      addMore = false;
+    }
+  }
+
+  // Save all instances
+  const instanceList = collectedInstances.map((inst, i) => ({
+    id: inst.id,
+    name: inst.name,
+    url: inst.url,
+    order: i,
+  }));
+  saveInstances(instanceList);
+
+  for (const inst of collectedInstances) {
+    setForInstance("redmine-url", inst.id, inst.url);
+    setForInstance("redmine-api-key", inst.id, inst.apiKey);
+  }
+
+  console.log(
+    `\n  ${GREEN}✔${RESET} ${collectedInstances.length} instance(s) saved to ${storeLabel}`,
+  );
+
+  if (collectedInstances.length > 1) {
+    console.log(`\n  Configured instances:`);
+    for (const inst of collectedInstances) {
+      console.log(`    ${DIM}•${RESET} ${inst.name} ${DIM}(${inst.url})${RESET}`);
+    }
+  }
+
+  console.log(`\n  Run ${BOLD}npm run dev${RESET} to start the application.\n`);
+}
+
+function checkDocker() {
+  try {
+    execFileSync("docker", ["info"], {
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 10000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function dockerCompose(args) {
   return new Promise((resolve, reject) => {
     const child = spawn("docker", ["compose", ...args], {
@@ -143,47 +260,6 @@ function dockerCompose(args) {
   });
 }
 
-async function setupLocal() {
-  const storeLabel =
-    platform() === "darwin"
-      ? "macOS Keychain"
-      : platform() === "linux"
-        ? "secret-tool (GNOME Keyring / KWallet)"
-        : ".env file";
-
-  console.log(`\n  Credentials will be stored in: ${DIM}${storeLabel}${RESET}\n`);
-
-  const url = await ask(`  ${DIM}Redmine URL${RESET}  `);
-  const apiKey = await ask(`  ${DIM}API Key${RESET}     `);
-
-  if (!url || !apiKey) {
-    console.error(`\n  ${RED}✖${RESET} Both fields are required.\n`);
-    process.exit(1);
-  }
-
-  const cleanUrl = url.replace(/\/$/, "");
-  console.log();
-  if (!(await testConnection(cleanUrl, apiKey))) process.exit(1);
-
-  set("redmine-url", cleanUrl);
-  set("redmine-api-key", apiKey);
-
-  console.log(`\n  ${GREEN}✔${RESET} Saved to ${storeLabel}\n`);
-  console.log(`  Run ${BOLD}npm run dev${RESET} to start the application.\n`);
-}
-
-function checkDocker() {
-  try {
-    execFileSync("docker", ["info"], {
-      stdio: ["pipe", "pipe", "pipe"],
-      timeout: 10000,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function setupDocker() {
   const s1 = spinner("Checking Docker...");
   if (!checkDocker()) {
@@ -193,21 +269,59 @@ async function setupDocker() {
   }
   s1.succeed("Docker is running");
 
-  console.log();
-  const url = await ask(`  ${DIM}Redmine URL${RESET}  `);
-  const apiKey = await ask(`  ${DIM}API Key${RESET}     `);
+  const collectedInstances = [];
+  const existingIds = new Set();
+  let instanceNumber = 1;
 
-  if (!url || !apiKey) {
-    console.error(`\n  ${RED}✖${RESET} Both fields are required.\n`);
-    process.exit(1);
+  const first = await collectInstance(instanceNumber, existingIds);
+  if (!first) process.exit(1);
+  collectedInstances.push(first);
+  existingIds.add(first.id);
+  instanceNumber++;
+
+  // Ask for additional instances
+  let addMore = true;
+  while (addMore) {
+    console.log();
+    const answer = await select("Would you like to add another Redmine instance?", [
+      { label: "No, that's all", value: "no" },
+      { label: "Yes, add another instance", value: "yes" },
+    ]);
+
+    if (answer === "yes") {
+      const inst = await collectInstance(instanceNumber, existingIds);
+      if (inst) {
+        collectedInstances.push(inst);
+        existingIds.add(inst.id);
+        instanceNumber++;
+      }
+    } else {
+      addMore = false;
+    }
   }
 
-  const cleanUrl = url.replace(/\/$/, "");
-  console.log();
-  if (!(await testConnection(cleanUrl, apiKey))) process.exit(1);
+  // Build .env with all instance credentials
+  const envLines = [];
+  for (const inst of collectedInstances) {
+    if (inst.id === "default") {
+      envLines.push(`REDMINE_URL=${inst.url}`);
+      envLines.push(`REDMINE_API_KEY=${inst.apiKey}`);
+    } else {
+      const suffix = inst.id.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      envLines.push(`REDMINE_URL_${suffix}=${inst.url}`);
+      envLines.push(`REDMINE_API_KEY_${suffix}=${inst.apiKey}`);
+    }
+  }
+  writeFileSync(ENV_FILE, envLines.join("\n") + "\n", "utf-8");
 
-  const envContent = `REDMINE_URL=${cleanUrl}\nREDMINE_API_KEY=${apiKey}\n`;
-  writeFileSync(ENV_FILE, envContent, "utf-8");
+  // Save instance list
+  const instanceList = collectedInstances.map((inst, i) => ({
+    id: inst.id,
+    name: inst.name,
+    url: inst.url,
+    order: i,
+  }));
+  saveInstances(instanceList);
 
   const s2 = spinner("Building image...");
   try {

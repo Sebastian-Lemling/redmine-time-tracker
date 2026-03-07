@@ -340,27 +340,19 @@ describe("useIssueSearch", () => {
     vi.useFakeTimers();
   });
 
-  it("readParamsFromUrl parses URL params on mount", async () => {
+  it("starts with empty params (ignores URL query string)", async () => {
     history.replaceState(
       null,
       "",
-      window.location.pathname +
-        "?q=fromurl&project_id=5&tracker_id=2&assigned_to_id=me&fixed_version_id=3&priority_id=1&sort=id:desc&status_id=open",
+      window.location.pathname + "?q=fromurl&project_id=5&tracker_id=2",
     );
     setupMountMocks();
-    mockedApi.mockResolvedValueOnce({ issues: [], total_count: 0 });
 
     const { result } = renderHook(() => useIssueSearch());
-    await flushTimers();
 
-    expect(result.current.params.q).toBe("fromurl");
-    expect(result.current.params.project_id).toBe(5);
-    expect(result.current.params.tracker_id).toBe(2);
-    expect(result.current.params.assigned_to_id).toBe("me");
-    expect(result.current.params.fixed_version_id).toBe(3);
-    expect(result.current.params.priority_id).toBe(1);
-    expect(result.current.params.sort).toBe("id:desc");
-    expect(result.current.params.status_id).toBe("open");
+    expect(result.current.params.q).toBeUndefined();
+    expect(result.current.params.project_id).toBeUndefined();
+    expect(result.current.params.tracker_id).toBeUndefined();
 
     history.replaceState(null, "", window.location.pathname);
   });

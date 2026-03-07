@@ -19,6 +19,7 @@ function makeEntry(overrides?: Partial<TimeLogEntry>): TimeLogEntry {
     date: "2025-03-01",
     activityId: 5,
     syncedToRedmine: false,
+    instanceId: "default",
     ...overrides,
   };
 }

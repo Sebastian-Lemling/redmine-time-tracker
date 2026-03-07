@@ -56,28 +56,6 @@ const SORT_OPTIONS = [
 export type SortOption = (typeof SORT_OPTIONS)[number]["value"];
 export { SORT_OPTIONS };
 
-function readParamsFromUrl(): IssueSearchParams {
-  const url = new URLSearchParams(window.location.search);
-  const result: IssueSearchParams = {};
-  const q = url.get("q");
-  if (q) result.q = q;
-  const projectId = url.get("project_id");
-  if (projectId) result.project_id = Number(projectId);
-  const statusId = url.get("status_id");
-  if (statusId) result.status_id = statusId;
-  const trackerId = url.get("tracker_id");
-  if (trackerId) result.tracker_id = Number(trackerId);
-  const assignedToId = url.get("assigned_to_id");
-  if (assignedToId) result.assigned_to_id = assignedToId;
-  const fixedVersionId = url.get("fixed_version_id");
-  if (fixedVersionId) result.fixed_version_id = Number(fixedVersionId);
-  const priorityId = url.get("priority_id");
-  if (priorityId) result.priority_id = Number(priorityId);
-  const sort = url.get("sort");
-  if (sort) result.sort = sort;
-  return result;
-}
-
 function writeParamsToUrl(params: IssueSearchParams) {
   const url = new URL(window.location.href);
   for (const key of SEARCH_URL_KEYS) url.searchParams.delete(key);
@@ -118,8 +96,9 @@ function clearRecentSearches() {
   safeRemove(RECENT_SEARCHES_KEY);
 }
 
-export function useIssueSearch(): UseIssueSearchReturn {
-  const [params, setParams] = useState<IssueSearchParams>(readParamsFromUrl);
+export function useIssueSearch(instanceId?: string): UseIssueSearchReturn {
+  const apiPrefix = instanceId ? `/api/i/${instanceId}` : "/api";
+  const [params, setParams] = useState<IssueSearchParams>({});
   const [results, setResults] = useState<RedmineIssue[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -135,96 +114,99 @@ export function useIssueSearch(): UseIssueSearchReturn {
   const lastSearchAppend = useRef(false);
 
   useEffect(() => {
-    api<{ projects: RedmineProject[] }>("/api/projects")
+    api<{ projects: RedmineProject[] }>(`${apiPrefix}/projects`)
       .then((data) => setProjects(data.projects))
       .catch(() => {
         setError("Failed to load projects");
       });
-    api<{ issue_priorities: RedminePriority[] }>("/api/priorities")
+    api<{ issue_priorities: RedminePriority[] }>(`${apiPrefix}/priorities`)
       .then((data) => setPriorities(data.issue_priorities))
       .catch(() => {
         setError("Failed to load priorities");
       });
-  }, []);
+  }, [apiPrefix]);
 
-  const doSearch = useCallback(async (searchParams: IssueSearchParams, append: boolean) => {
-    lastSearchParams.current = searchParams;
-    lastSearchAppend.current = append;
+  const doSearch = useCallback(
+    async (searchParams: IssueSearchParams, append: boolean) => {
+      lastSearchParams.current = searchParams;
+      lastSearchAppend.current = append;
 
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    const hasAnyCriteria =
-      searchParams.q ||
-      searchParams.project_id ||
-      searchParams.status_id ||
-      searchParams.tracker_id ||
-      searchParams.assigned_to_id ||
-      searchParams.fixed_version_id ||
-      searchParams.priority_id;
-    if (!hasAnyCriteria) {
-      setResults([]);
-      setTotalCount(0);
-      setLoading(false);
-      setLoadingMore(false);
-      setError(null);
-      return;
-    }
-
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
-
-    try {
-      const qs = new URLSearchParams();
-      if (searchParams.q) qs.set("q", searchParams.q);
-      if (searchParams.project_id) qs.set("project_id", String(searchParams.project_id));
-      if (searchParams.status_id) qs.set("status_id", searchParams.status_id);
-      if (searchParams.tracker_id) qs.set("tracker_id", String(searchParams.tracker_id));
-      if (searchParams.assigned_to_id) qs.set("assigned_to_id", searchParams.assigned_to_id);
-      if (searchParams.fixed_version_id)
-        qs.set("fixed_version_id", String(searchParams.fixed_version_id));
-      if (searchParams.priority_id) qs.set("priority_id", String(searchParams.priority_id));
-      if (searchParams.sort) qs.set("sort", searchParams.sort);
-      qs.set("limit", String(LIMIT));
-      qs.set("offset", String(searchParams.offset || 0));
-
-      const data = await api<IssueSearchResult>(`/api/issues/search?${qs.toString()}`, {
-        signal: controller.signal,
-      });
-
-      if (controller.signal.aborted) return;
-
-      if (append) {
-        setResults((prev) => [...prev, ...data.issues]);
-      } else {
-        setResults(data.issues);
-      }
-      setTotalCount(data.total_count);
-      setError(null);
-      if (searchParams.q && !append) addRecentSearch(searchParams.q);
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      if (controller.signal.aborted) return;
-
-      const message = e instanceof Error ? e.message : "Connection error";
-      setError(message);
-
-      if (!append) {
+      const hasAnyCriteria =
+        searchParams.q ||
+        searchParams.project_id ||
+        searchParams.status_id ||
+        searchParams.tracker_id ||
+        searchParams.assigned_to_id ||
+        searchParams.fixed_version_id ||
+        searchParams.priority_id;
+      if (!hasAnyCriteria) {
         setResults([]);
         setTotalCount(0);
-      }
-    } finally {
-      if (!controller.signal.aborted) {
         setLoading(false);
         setLoadingMore(false);
+        setError(null);
+        return;
       }
-    }
-  }, []);
+
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      try {
+        const qs = new URLSearchParams();
+        if (searchParams.q) qs.set("q", searchParams.q);
+        if (searchParams.project_id) qs.set("project_id", String(searchParams.project_id));
+        if (searchParams.status_id) qs.set("status_id", searchParams.status_id);
+        if (searchParams.tracker_id) qs.set("tracker_id", String(searchParams.tracker_id));
+        if (searchParams.assigned_to_id) qs.set("assigned_to_id", searchParams.assigned_to_id);
+        if (searchParams.fixed_version_id)
+          qs.set("fixed_version_id", String(searchParams.fixed_version_id));
+        if (searchParams.priority_id) qs.set("priority_id", String(searchParams.priority_id));
+        if (searchParams.sort) qs.set("sort", searchParams.sort);
+        qs.set("limit", String(LIMIT));
+        qs.set("offset", String(searchParams.offset || 0));
+
+        const data = await api<IssueSearchResult>(`${apiPrefix}/issues/search?${qs.toString()}`, {
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) return;
+
+        if (append) {
+          setResults((prev) => [...prev, ...data.issues]);
+        } else {
+          setResults(data.issues);
+        }
+        setTotalCount(data.total_count);
+        setError(null);
+        if (searchParams.q && !append) addRecentSearch(searchParams.q);
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (controller.signal.aborted) return;
+
+        const message = e instanceof Error ? e.message : "Connection error";
+        setError(message);
+
+        if (!append) {
+          setResults([]);
+          setTotalCount(0);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    [apiPrefix],
+  );
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

@@ -3,29 +3,40 @@ import cors from "cors";
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { get as credGet, sanitize } from "./credentials.js";
+import { loadInstances, saveInstances, getInstanceConfig, getForInstance } from "./credentials.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
 const TIMELOG_FILE = join(DATA_DIR, "timelog.json");
 
-// --- Load credentials (OS keystore → env var → .env) ---
-const redmineUrl = credGet("redmine-url");
-const redmineApiKey = credGet("redmine-api-key");
+// --- Load instances ---
+const instances = loadInstances();
 
-if (!redmineUrl || !redmineApiKey) {
-  console.error("\n  No Redmine credentials found.\n  Run: npm run setup\n");
+if (instances.length === 0) {
+  console.error("\n  No Redmine instances configured.\n  Run: npm run setup\n");
   process.exit(1);
 }
 
-const config = {
-  baseUrl: redmineUrl.replace(/\/$/, ""),
-  apiKey: redmineApiKey,
-};
+// Build config map for all instances
+const instanceConfigs = new Map();
+for (const inst of instances) {
+  const config = getInstanceConfig(inst.id, instances);
+  if (config) {
+    instanceConfigs.set(inst.id, config);
+    console.log(`Redmine [${inst.name}]: ${config.baseUrl}`);
+  } else {
+    console.warn(
+      `  Warning: Instance "${inst.name}" (${inst.id}) has missing credentials, skipping.`,
+    );
+  }
+}
 
-console.log(`Redmine: ${config.baseUrl}`);
+if (instanceConfigs.size === 0) {
+  console.error("\n  No valid instance credentials found.\n  Run: npm run setup\n");
+  process.exit(1);
+}
 
-// --- Local date helper (avoids UTC timezone bug) ---
+// --- Local date helper ---
 function localDateString() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -40,6 +51,15 @@ function readTimelog() {
   try {
     const data = JSON.parse(raw);
     if (!Array.isArray(data)) throw new Error("Not an array");
+    // Migration: add instanceId to entries that don't have one
+    let migrated = false;
+    for (const entry of data) {
+      if (!entry.instanceId) {
+        entry.instanceId = "default";
+        migrated = true;
+      }
+    }
+    if (migrated) writeTimelog(data);
     return data;
   } catch {
     const backup = TIMELOG_FILE + ".corrupt." + Date.now();
@@ -55,7 +75,6 @@ function writeTimelog(entries) {
   renameSync(tmp, TIMELOG_FILE);
 }
 
-// Simple sequential lock for timelog operations
 let timelogLock = Promise.resolve();
 function withTimelogLock(fn) {
   const next = timelogLock.then(fn);
@@ -77,6 +96,8 @@ function validateTimelogEntry(body) {
   if (typeof body.date === "string") clean.date = body.date.slice(0, 10);
   if (typeof body.activityId === "number") clean.activityId = body.activityId;
   if (typeof body.originalDuration === "number") clean.originalDuration = body.originalDuration;
+  if (typeof body.instanceId === "string") clean.instanceId = body.instanceId.slice(0, 100);
+  if (typeof body.instanceName === "string") clean.instanceName = body.instanceName.slice(0, 200);
   return clean;
 }
 
@@ -93,7 +114,7 @@ function validateTimelogUpdate(body) {
   return clean;
 }
 
-// --- Production mode: detect built frontend ---
+// --- Production mode ---
 const DIST_DIR = join(__dirname, "..", "dist");
 const isProduction = existsSync(DIST_DIR);
 
@@ -109,7 +130,6 @@ app.use(express.json({ limit: "100kb" }));
 const REDMINE_TIMEOUT_MS = 30000;
 const MAX_PAGINATION_PAGES = 50;
 
-/** Validate that :id parameter is a safe integer */
 function validateId(req, res) {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) {
@@ -119,7 +139,23 @@ function validateId(req, res) {
   return true;
 }
 
-async function redmineFetch(path, options = {}) {
+function validateInstanceId(req, res) {
+  const { instanceId } = req.params;
+  if (!instanceId || !/^[a-zA-Z0-9_-]+$/.test(instanceId)) {
+    res.status(400).json({ error: "Invalid instance ID" });
+    return false;
+  }
+  if (!instanceConfigs.has(instanceId)) {
+    res.status(404).json({ error: `Unknown instance: ${instanceId}` });
+    return false;
+  }
+  return true;
+}
+
+async function redmineFetch(instanceId, path, options = {}) {
+  const config = instanceConfigs.get(instanceId);
+  if (!config) throw new Error(`Unknown instance: ${instanceId}`);
+
   const url = `${config.baseUrl}${path}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REDMINE_TIMEOUT_MS);
@@ -156,30 +192,90 @@ async function redmineFetch(path, options = {}) {
   }
 }
 
-// Auto-connect: return current user
-app.get("/api/me", async (req, res) => {
+// =============================================================================
+// Instance management endpoints
+// =============================================================================
+
+app.get("/api/instances", (req, res) => {
+  const current = loadInstances();
+  res.json(
+    current.map((inst) => ({
+      id: inst.id,
+      name: inst.name,
+      url: inst.url,
+      order: inst.order ?? 0,
+    })),
+  );
+});
+
+app.put("/api/instances", (req, res) => {
+  const updates = req.body;
+  if (!Array.isArray(updates)) {
+    return res.status(400).json({ error: "Expected array of instances" });
+  }
+  const current = loadInstances();
+  const currentIds = new Set(current.map((i) => i.id));
+  const result = [];
+  for (const upd of updates) {
+    if (!upd.id || !currentIds.has(upd.id)) continue;
+    const existing = current.find((i) => i.id === upd.id);
+    result.push({
+      id: existing.id,
+      name: typeof upd.name === "string" ? upd.name.slice(0, 100) : existing.name,
+      url: existing.url,
+      order: typeof upd.order === "number" ? upd.order : (existing.order ?? 0),
+    });
+  }
+  // Keep instances that weren't in the update
+  for (const inst of current) {
+    if (!result.find((r) => r.id === inst.id)) {
+      result.push(inst);
+    }
+  }
+  result.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  saveInstances(result);
+  // Update in-memory configs with new names
+  for (const inst of result) {
+    const cfg = instanceConfigs.get(inst.id);
+    if (cfg) cfg.name = inst.name;
+  }
+  res.json(result);
+});
+
+// =============================================================================
+// Per-instance Redmine API routes: /api/i/:instanceId/*
+// =============================================================================
+
+// Current user
+app.get("/api/i/:instanceId/me", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch("/users/current.json");
+    const result = await redmineFetch(instanceId, "/users/current.json");
     if (result.body?.user) {
       const { id, login, firstname, lastname, mail } = result.body.user;
+      const config = instanceConfigs.get(instanceId);
       res.json({ user: { id, login, firstname, lastname, mail }, redmineUrl: config.baseUrl });
     } else {
       res.status(502).json({ error: "Unexpected Redmine response" });
     }
   } catch (e) {
-    console.error("Redmine /me error:", e.message);
+    console.error(`Redmine [${instanceId}] /me error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get assigned issues (auto-paginate)
-app.get("/api/issues", async (req, res) => {
+// Assigned issues (auto-paginate)
+app.get("/api/i/:instanceId/issues", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
     const allIssues = [];
     let offset = 0;
     const limit = 100;
     for (let _page = 0; _page < MAX_PAGINATION_PAGES; _page++) {
       const result = await redmineFetch(
+        instanceId,
         `/issues.json?assigned_to_id=me&status_id=open&sort=project,priority:desc&limit=${limit}&offset=${offset}`,
       );
       if (result.status !== 200) return res.status(result.status).json(result.body);
@@ -190,27 +286,32 @@ app.get("/api/issues", async (req, res) => {
     }
     res.json({ issues: allIssues, total_count: allIssues.length });
   } catch (e) {
-    console.error("Redmine /issues error:", e.message);
+    console.error(`Redmine [${instanceId}] /issues error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get time entry activities (global)
-app.get("/api/activities", async (req, res) => {
+// Activities (global)
+app.get("/api/i/:instanceId/activities", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch("/enumerations/time_entry_activities.json");
+    const result = await redmineFetch(instanceId, "/enumerations/time_entry_activities.json");
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine /activities error:", e.message);
+    console.error(`Redmine [${instanceId}] /activities error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get project-specific time entry activities
-app.get("/api/projects/:id/activities", async (req, res) => {
+// Project-specific activities
+app.get("/api/i/:instanceId/projects/:id/activities", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
+  const { instanceId } = req.params;
   try {
     const result = await redmineFetch(
+      instanceId,
       `/projects/${req.params.id}.json?include=time_entry_activities`,
     );
     if (result.status !== 200) return res.status(result.status).json(result.body);
@@ -218,21 +319,23 @@ app.get("/api/projects/:id/activities", async (req, res) => {
       result.body?.project?.time_entry_activities || result.body?.time_entry_activities || [];
     res.json({ time_entry_activities: activities });
   } catch (e) {
-    console.error("Redmine /projects/activities error:", e.message);
+    console.error(`Redmine [${instanceId}] /projects/activities error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
 // Create time entry
-app.post("/api/time_entries", async (req, res) => {
+app.post("/api/i/:instanceId/time_entries", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch("/time_entries.json", {
+    const result = await redmineFetch(instanceId, "/time_entries.json", {
       method: "POST",
       body: JSON.stringify(req.body),
     });
     if (result.status >= 400) {
       console.error(
-        "Redmine POST /time_entries rejected:",
+        `Redmine [${instanceId}] POST /time_entries rejected:`,
         result.status,
         JSON.stringify(result.body),
       );
@@ -240,27 +343,29 @@ app.post("/api/time_entries", async (req, res) => {
     }
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine /time_entries error:", e.message);
+    console.error(`Redmine [${instanceId}] /time_entries error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get time entries for a date range
-app.get("/api/time_entries/range", async (req, res) => {
+// Time entries for date range
+app.get("/api/i/:instanceId/time_entries/range", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
+  const { from, to } = req.query;
+  if (!from || !to || typeof from !== "string" || typeof to !== "string") {
+    return res.status(400).json({ error: "from and to query params required (YYYY-MM-DD)" });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ error: "Invalid date format, expected YYYY-MM-DD" });
+  }
   try {
-    const { from, to } = req.query;
-    if (!from || !to || typeof from !== "string" || typeof to !== "string") {
-      return res.status(400).json({ error: "from and to query params required (YYYY-MM-DD)" });
-    }
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
-      return res.status(400).json({ error: "Invalid date format, expected YYYY-MM-DD" });
-    }
     const allEntries = [];
     let offset = 0;
     const limit = 100;
     for (let _page = 0; _page < MAX_PAGINATION_PAGES; _page++) {
       const result = await redmineFetch(
+        instanceId,
         `/time_entries.json?user_id=me&from=${from}&to=${to}&limit=${limit}&offset=${offset}`,
       );
       if (result.status !== 200) return res.status(result.status).json(result.body);
@@ -269,15 +374,23 @@ app.get("/api/time_entries/range", async (req, res) => {
       if (allEntries.length >= (result.body?.total_count || 0) || entries.length < limit) break;
       offset += limit;
     }
+    // Tag entries with instance info
+    const config = instanceConfigs.get(instanceId);
+    for (const e of allEntries) {
+      e.instanceId = instanceId;
+      e.instanceName = config?.name || instanceId;
+    }
     res.json({ time_entries: allEntries });
   } catch (e) {
-    console.error("Redmine /time_entries/range error:", e.message);
+    console.error(`Redmine [${instanceId}] /time_entries/range error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Search issues across all projects (no auto-pagination)
-app.get("/api/issues/search", async (req, res) => {
+// Search issues
+app.get("/api/i/:instanceId/issues/search", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
     const params = new URLSearchParams();
     const {
@@ -293,7 +406,6 @@ app.get("/api/issues/search", async (req, res) => {
       offset,
     } = req.query;
 
-    // Require at least one filter — no full dump
     if (
       !q &&
       !project_id &&
@@ -307,27 +419,22 @@ app.get("/api/issues/search", async (req, res) => {
     }
 
     if (q && typeof q === "string") {
-      // If query looks like a ticket number (#123 or 123), search by issue_id
       const idMatch = q.match(/^#?(\d+)$/);
       if (idMatch) {
         params.set("issue_id", idMatch[1]);
       } else {
-        // Use explicit filter syntax — simple "subject=~q" gets ignored
-        // when any f[] filter is active
         params.append("f[]", "subject");
         params.set("op[subject]", "~");
         params.append("v[subject][]", q);
       }
     }
-    // Use Redmine's explicit filter syntax (f[]/op[]/v[]) for all filters.
-    // Simple query params get ignored when any explicit filter is present.
     if (project_id) params.set("project_id", String(project_id));
     if (status_id) {
       params.append("f[]", "status_id");
       params.set("op[status_id]", "=");
       params.append("v[status_id][]", String(status_id));
     } else {
-      params.set("status_id", "*"); // all statuses by default
+      params.set("status_id", "*");
     }
     if (tracker_id) {
       params.append("f[]", "tracker_id");
@@ -353,7 +460,7 @@ app.get("/api/issues/search", async (req, res) => {
     params.set("limit", String(Number(limit) || 25));
     params.set("offset", String(Number(offset) || 0));
 
-    const result = await redmineFetch(`/issues.json?${params.toString()}`);
+    const result = await redmineFetch(instanceId, `/issues.json?${params.toString()}`);
     if (result.status !== 200) return res.status(result.status).json(result.body);
     res.json({
       issues: result.body?.issues || [],
@@ -362,19 +469,24 @@ app.get("/api/issues/search", async (req, res) => {
       limit: Number(limit) || 25,
     });
   } catch (e) {
-    console.error("Redmine /issues/search error:", e.message);
+    console.error(`Redmine [${instanceId}] /issues/search error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get all visible projects (auto-paginated)
-app.get("/api/projects", async (req, res) => {
+// Projects
+app.get("/api/i/:instanceId/projects", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
     const allProjects = [];
     let offset = 0;
     const limit = 100;
     for (let _page = 0; _page < MAX_PAGINATION_PAGES; _page++) {
-      const result = await redmineFetch(`/projects.json?limit=${limit}&offset=${offset}`);
+      const result = await redmineFetch(
+        instanceId,
+        `/projects.json?limit=${limit}&offset=${offset}`,
+      );
       if (result.status !== 200) return res.status(result.status).json(result.body);
       const projects = result.body?.projects || [];
       allProjects.push(
@@ -386,107 +498,128 @@ app.get("/api/projects", async (req, res) => {
     allProjects.sort((a, b) => a.name.localeCompare(b.name));
     res.json({ projects: allProjects });
   } catch (e) {
-    console.error("Redmine /projects error:", e.message);
+    console.error(`Redmine [${instanceId}] /projects error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get issue priorities
-app.get("/api/priorities", async (req, res) => {
+// Priorities
+app.get("/api/i/:instanceId/priorities", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch("/enumerations/issue_priorities.json");
+    const result = await redmineFetch(instanceId, "/enumerations/issue_priorities.json");
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine /priorities error:", e.message);
+    console.error(`Redmine [${instanceId}] /priorities error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get a single issue by ID (supports ?include=journals etc.)
-app.get("/api/issues/:id", async (req, res) => {
+// Single issue
+app.get("/api/i/:instanceId/issues/:id", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
+  const { instanceId } = req.params;
   try {
     const qs = new URLSearchParams(req.query).toString();
     const path = `/issues/${req.params.id}.json${qs ? `?${qs}` : ""}`;
-    const result = await redmineFetch(path);
+    const result = await redmineFetch(instanceId, path);
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine GET /issues/:id error:", e.message);
+    console.error(`Redmine [${instanceId}] GET /issues/:id error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get today's time entries
-app.get("/api/time_entries/today", async (req, res) => {
+// Today's time entries
+app.get("/api/i/:instanceId/time_entries/today", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
     const today = localDateString();
     const result = await redmineFetch(
+      instanceId,
       `/time_entries.json?user_id=me&from=${today}&to=${today}&limit=100`,
     );
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine /time_entries/today error:", e.message);
+    console.error(`Redmine [${instanceId}] /time_entries/today error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get issue statuses
-app.get("/api/statuses", async (req, res) => {
+// Statuses
+app.get("/api/i/:instanceId/statuses", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch("/issue_statuses.json");
+    const result = await redmineFetch(instanceId, "/issue_statuses.json");
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine /statuses error:", e.message);
+    console.error(`Redmine [${instanceId}] /statuses error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get trackers
-app.get("/api/trackers", async (req, res) => {
+// Trackers
+app.get("/api/i/:instanceId/trackers", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch("/trackers.json");
+    const result = await redmineFetch(instanceId, "/trackers.json");
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine /trackers error:", e.message);
+    console.error(`Redmine [${instanceId}] /trackers error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get project-specific trackers
-app.get("/api/projects/:id/trackers", async (req, res) => {
+// Project trackers
+app.get("/api/i/:instanceId/projects/:id/trackers", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch(`/projects/${req.params.id}.json?include=trackers`);
+    const result = await redmineFetch(
+      instanceId,
+      `/projects/${req.params.id}.json?include=trackers`,
+    );
     if (result.status !== 200) return res.status(result.status).json(result.body);
     const trackers = result.body?.project?.trackers || [];
     res.json({ trackers });
   } catch (e) {
-    console.error("Redmine /projects/trackers error:", e.message);
+    console.error(`Redmine [${instanceId}] /projects/trackers error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get project versions
-app.get("/api/projects/:id/versions", async (req, res) => {
+// Project versions
+app.get("/api/i/:instanceId/projects/:id/versions", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    const result = await redmineFetch(`/projects/${req.params.id}/versions.json`);
+    const result = await redmineFetch(instanceId, `/projects/${req.params.id}/versions.json`);
     res.status(result.status).json(result.body);
   } catch (e) {
-    console.error("Redmine /projects/versions error:", e.message);
+    console.error(`Redmine [${instanceId}] /projects/versions error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Get project members
-app.get("/api/projects/:id/members", async (req, res) => {
+// Project members
+app.get("/api/i/:instanceId/projects/:id/members", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
+  const { instanceId } = req.params;
   try {
     const allMembers = [];
     let offset = 0;
     const limit = 100;
     for (let _page = 0; _page < MAX_PAGINATION_PAGES; _page++) {
       const result = await redmineFetch(
+        instanceId,
         `/projects/${req.params.id}/memberships.json?limit=${limit}&offset=${offset}`,
       );
       if (result.status !== 200) return res.status(result.status).json(result.body);
@@ -497,22 +630,22 @@ app.get("/api/projects/:id/members", async (req, res) => {
       if (allMembers.length >= (result.body?.total_count || 0) || memberships.length < limit) break;
       offset += limit;
     }
-    // Sort alphabetically
     allMembers.sort((a, b) => a.name.localeCompare(b.name));
     res.json({ members: allMembers });
   } catch (e) {
-    console.error("Redmine /projects/members error:", e.message);
+    console.error(`Redmine [${instanceId}] /projects/members error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// Update issue (status, assigned_to, tracker, done_ratio) with optimistic locking
-app.put("/api/issues/:id", async (req, res) => {
+// Update issue
+app.put("/api/i/:instanceId/issues/:id", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
+  const { instanceId } = req.params;
   try {
-    // Optimistic lock: if client sends updated_on, verify it hasn't changed
     if (req.body.updated_on && typeof req.body.updated_on === "string") {
-      const check = await redmineFetch(`/issues/${req.params.id}.json`);
+      const check = await redmineFetch(instanceId, `/issues/${req.params.id}.json`);
       if (check.status !== 200) return res.status(check.status).json(check.body);
       const current = check.body?.issue;
       if (current && current.updated_on !== req.body.updated_on) {
@@ -548,20 +681,107 @@ app.put("/api/issues/:id", async (req, res) => {
     if (Object.keys(issue).length === 0) {
       return res.status(400).json({ error: "No valid fields to update" });
     }
-    const result = await redmineFetch(`/issues/${req.params.id}.json`, {
+    const result = await redmineFetch(instanceId, `/issues/${req.params.id}.json`, {
       method: "PUT",
       body: JSON.stringify({ issue }),
     });
-    // Redmine returns 204 No Content on success
     if (result.status === 204) return res.json({ ok: true });
     res.status(result.status).json(result.body || { error: "Update failed" });
   } catch (e) {
-    console.error("Redmine PUT /issues error:", e.message);
+    console.error(`Redmine [${instanceId}] PUT /issues error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 
-// --- Timelog CRUD (with locking + validation) ---
+// =============================================================================
+// Aggregated endpoints (across all instances)
+// =============================================================================
+
+// Aggregate time entries from all instances for a date range
+app.get("/api/time_entries/range", async (req, res) => {
+  const { from, to } = req.query;
+  if (!from || !to || typeof from !== "string" || typeof to !== "string") {
+    return res.status(400).json({ error: "from and to query params required (YYYY-MM-DD)" });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ error: "Invalid date format, expected YYYY-MM-DD" });
+  }
+
+  try {
+    const allEntries = [];
+    const errors = [];
+
+    const results = await Promise.all(
+      [...instanceConfigs.entries()].map(async ([instanceId, config]) => {
+        const instanceEntries = [];
+        try {
+          let offset = 0;
+          const limit = 100;
+          for (let _page = 0; _page < MAX_PAGINATION_PAGES; _page++) {
+            const result = await redmineFetch(
+              instanceId,
+              `/time_entries.json?user_id=me&from=${from}&to=${to}&limit=${limit}&offset=${offset}`,
+            );
+            if (result.status !== 200) {
+              errors.push({ instanceId, error: result.body?.error || `HTTP ${result.status}` });
+              break;
+            }
+            const entries = result.body?.time_entries || [];
+            for (const e of entries) {
+              e.instanceId = instanceId;
+              e.instanceName = config.name;
+            }
+            instanceEntries.push(...entries);
+            if (instanceEntries.length >= (result.body?.total_count || 0) || entries.length < limit)
+              break;
+            offset += limit;
+          }
+        } catch (e) {
+          errors.push({ instanceId, error: e.message });
+        }
+        return instanceEntries;
+      }),
+    );
+    for (const entries of results) {
+      allEntries.push(...entries);
+    }
+
+    res.json({ time_entries: allEntries, errors: errors.length > 0 ? errors : undefined });
+  } catch (e) {
+    console.error("Aggregated /time_entries/range error:", e.message);
+    res.status(502).json({ error: "Cannot reach Redmine" });
+  }
+});
+
+// =============================================================================
+// Backwards-compatible routes (use first instance as default)
+// =============================================================================
+
+const defaultInstanceId = instances[0]?.id;
+
+app.get("/api/me", async (req, res) => {
+  if (!defaultInstanceId || !instanceConfigs.has(defaultInstanceId)) {
+    return res.status(500).json({ error: "No default instance configured" });
+  }
+  try {
+    const result = await redmineFetch(defaultInstanceId, "/users/current.json");
+    if (result.body?.user) {
+      const { id, login, firstname, lastname, mail } = result.body.user;
+      const config = instanceConfigs.get(defaultInstanceId);
+      res.json({ user: { id, login, firstname, lastname, mail }, redmineUrl: config.baseUrl });
+    } else {
+      res.status(502).json({ error: "Unexpected Redmine response" });
+    }
+  } catch (e) {
+    console.error("Redmine /me error:", e.message);
+    res.status(502).json({ error: "Cannot reach Redmine" });
+  }
+});
+
+// =============================================================================
+// Timelog CRUD (shared across instances)
+// =============================================================================
+
 app.get("/api/timelog", (req, res) => {
   res.json(readTimelog());
 });
@@ -571,6 +791,7 @@ app.post("/api/timelog", async (req, res) => {
     const entry = await withTimelogLock(() => {
       const entries = readTimelog();
       const validated = validateTimelogEntry(req.body);
+      if (!validated.instanceId) validated.instanceId = "default";
       const newEntry = { ...validated, id: crypto.randomUUID(), syncedToRedmine: false };
       entries.unshift(newEntry);
       writeTimelog(entries);
@@ -613,7 +834,6 @@ app.delete("/api/timelog/:id", async (req, res) => {
   }
 });
 
-// sendBeacon fallback: POST with ?_method=DELETE for beforeunload flush
 app.post("/api/timelog/:id", async (req, res) => {
   if (req.query._method !== "DELETE") return res.status(405).json({ error: "Method not allowed" });
   try {
@@ -625,6 +845,33 @@ app.post("/api/timelog/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: "Failed to delete entry" });
+  }
+});
+
+// Catch-all: forward unmatched /api/* to default instance
+app.all("/api/{*path}", async (req, res) => {
+  if (!defaultInstanceId || !instanceConfigs.has(defaultInstanceId)) {
+    return res.status(500).json({ error: "No default instance configured" });
+  }
+  try {
+    let path = req.path.replace(/^\/api/, "");
+    if (!path.includes(".")) path += ".json";
+    const qs = new URLSearchParams(req.query).toString();
+    if (qs) path += `?${qs}`;
+
+    const fetchOpts = { method: req.method };
+    if (req.method !== "GET" && req.method !== "HEAD" && req.body) {
+      fetchOpts.body = JSON.stringify(req.body);
+    }
+
+    const result = await redmineFetch(defaultInstanceId, path, fetchOpts);
+    res.status(result.status).json(result.body);
+  } catch (e) {
+    console.error(
+      `Redmine [${defaultInstanceId}] catch-all ${req.method} ${req.path} error:`,
+      e.message,
+    );
+    res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });
 

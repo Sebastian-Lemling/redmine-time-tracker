@@ -62,7 +62,8 @@ export function useTicketGrouping({
   }, [filteredIssues]);
 
   const grouped = useMemo(() => {
-    if (!showFavoritesGroup || !favoriteIds || favoriteIds.size === 0) return baseGrouped;
+    if (!showFavoritesGroup) return baseGrouped;
+    if (!favoriteIds || favoriteIds.size === 0) return {};
     let favSource = favoriteIssues ?? [];
     if (showTrackedOnly) favSource = favSource.filter((i) => !!timers[i.id]);
     if (favSource.length === 0) return {};
