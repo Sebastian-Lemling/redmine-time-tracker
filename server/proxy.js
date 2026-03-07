@@ -93,9 +93,17 @@ function validateTimelogUpdate(body) {
   return clean;
 }
 
+// --- Production mode: detect built frontend ---
+const DIST_DIR = join(__dirname, "..", "dist");
+const isProduction = existsSync(DIST_DIR);
+
 // --- Express app ---
 const app = express();
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(
+  cors({
+    origin: isProduction ? true : "http://localhost:5173",
+  }),
+);
 app.use(express.json({ limit: "100kb" }));
 
 const REDMINE_TIMEOUT_MS = 30000;
@@ -620,8 +628,18 @@ app.post("/api/timelog/:id", async (req, res) => {
   }
 });
 
+// --- Production: serve built frontend ---
+if (isProduction) {
+  app.use(express.static(DIST_DIR));
+  app.get("{*path}", (req, res) => {
+    res.sendFile(join(DIST_DIR, "index.html"));
+  });
+  console.log("Serving frontend from dist/");
+}
+
 // --- Start ---
 const PORT = 3001;
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`Proxy running on http://localhost:${PORT}`);
+const HOST = isProduction ? "0.0.0.0" : "127.0.0.1";
+app.listen(PORT, HOST, () => {
+  console.log(`${isProduction ? "Server" : "Proxy"} running on http://${HOST}:${PORT}`);
 });

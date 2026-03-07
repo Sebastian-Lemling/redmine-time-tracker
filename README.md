@@ -88,15 +88,43 @@ Redmine's built-in time tracking is clunky and slow. This app replaces it with a
 
 ## Quick Start
 
+The setup wizard lets you choose between running locally or with Docker.
+
 ```bash
 git clone https://github.com/Sebastian-Lemling/redmine-time-tracker.git
 cd redmine-time-tracker
 npm install
-npm run setup    # Interactive config — Redmine URL + API key
+npm run setup
+```
+
+### Local
+
+Runs Node.js directly on your machine. Credentials are stored in your OS keystore (macOS Keychain, GNOME Keyring, or `.env` fallback).
+
+```bash
+npm run setup    # Choose "Local", enter Redmine URL + API key
 npm run dev      # Opens at http://localhost:5173
 ```
 
-The setup wizard verifies the connection and stores credentials in your OS keystore (macOS Keychain, GNOME Keyring, or `.env` fallback). See the **[Installation Guide](docs/installation.md)** for OS-specific instructions.
+### Docker
+
+Runs the app in a container. Requires Docker.
+
+```bash
+npm run setup    # Choose "Docker", enter Redmine URL + API key — builds & starts automatically
+```
+
+The app will be available at **http://localhost:9500**. Timelog data is persisted in a Docker volume.
+
+| Command                 | Description                            |
+| ----------------------- | -------------------------------------- |
+| `npm run docker:up`     | Start the container                    |
+| `npm run docker:down`   | Stop the container                     |
+| `npm run docker:update` | Pull latest changes, rebuild & restart |
+| `npm run docker:logs`   | Follow container logs                  |
+| `npm run docker:build`  | Rebuild the image                      |
+
+See the **[Installation Guide](docs/installation.md)** for OS-specific instructions.
 
 ## Contributing
 
