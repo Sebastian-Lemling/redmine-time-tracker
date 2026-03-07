@@ -26,6 +26,7 @@ interface UseIssueSearchReturn {
   retry: () => void;
   recentSearches: string[];
   applyRecentSearch: (query: string) => void;
+  removeRecentSearch: (query: string) => void;
   clearRecent: () => void;
 }
 
@@ -77,7 +78,6 @@ function readParamsFromUrl(): IssueSearchParams {
   return result;
 }
 
-/** Sync search params to URL (replaceState to avoid history spam) */
 function writeParamsToUrl(params: IssueSearchParams) {
   const url = new URL(window.location.href);
   for (const key of SEARCH_URL_KEYS) url.searchParams.delete(key);
@@ -106,6 +106,11 @@ function addRecentSearch(query: string) {
   const list = getRecentSearches().filter((s) => s !== trimmed);
   list.unshift(trimmed);
   if (list.length > MAX_RECENT_SEARCHES) list.length = MAX_RECENT_SEARCHES;
+  safeSet(RECENT_SEARCHES_KEY, list);
+}
+
+function removeRecentSearchItem(query: string) {
+  const list = getRecentSearches().filter((s) => s !== query);
   safeSet(RECENT_SEARCHES_KEY, list);
 }
 
@@ -316,6 +321,11 @@ export function useIssueSearch(): UseIssueSearchReturn {
     setParams((prev) => ({ ...prev, q: query, offset: 0 }));
   }, []);
 
+  const removeRecent = useCallback((query: string) => {
+    removeRecentSearchItem(query);
+    setRecentSearchesState((prev) => prev.filter((s) => s !== query));
+  }, []);
+
   const clearRecent = useCallback(() => {
     clearRecentSearches();
     setRecentSearchesState([]);
@@ -338,6 +348,7 @@ export function useIssueSearch(): UseIssueSearchReturn {
     retry,
     recentSearches,
     applyRecentSearch,
+    removeRecentSearch: removeRecent,
     clearRecent,
   };
 }

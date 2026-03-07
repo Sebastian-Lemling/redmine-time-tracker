@@ -12,6 +12,7 @@ import {
   getMonthGrid,
   formatDateKey,
   formatDurationHM,
+  getTimeAgoUnit,
 } from "@/lib/dates";
 
 describe("toLocalDateString", () => {
@@ -170,5 +171,41 @@ describe("formatDurationHM", () => {
 
   it("formats '0:00' for 0 minutes", () => {
     expect(formatDurationHM(0)).toBe("0:00");
+  });
+});
+
+describe("getTimeAgoUnit", () => {
+  it("returns null for less than 1 minute ago", () => {
+    expect(getTimeAgoUnit(new Date().toISOString())).toBeNull();
+  });
+
+  it("returns minute unit for 5 minutes ago", () => {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
+    const result = getTimeAgoUnit(fiveMinAgo);
+    expect(result).toEqual({ value: 5, unit: "minute" });
+  });
+
+  it("returns hour unit for 3 hours ago", () => {
+    const threeHoursAgo = new Date(Date.now() - 3 * 3600_000).toISOString();
+    const result = getTimeAgoUnit(threeHoursAgo);
+    expect(result).toEqual({ value: 3, unit: "hour" });
+  });
+
+  it("returns day unit for 2 days ago", () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400_000).toISOString();
+    const result = getTimeAgoUnit(twoDaysAgo);
+    expect(result).toEqual({ value: 2, unit: "day" });
+  });
+
+  it("returns week unit for 2 weeks ago", () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 86400_000).toISOString();
+    const result = getTimeAgoUnit(twoWeeksAgo);
+    expect(result).toEqual({ value: 2, unit: "week" });
+  });
+
+  it("returns month unit for 60 days ago", () => {
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 86400_000).toISOString();
+    const result = getTimeAgoUnit(sixtyDaysAgo);
+    expect(result).toEqual({ value: 2, unit: "month" });
   });
 });
