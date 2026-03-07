@@ -55,8 +55,7 @@ export interface GroupProps {
   dragHandleProps?: ReturnType<typeof useSortable>["listeners"];
   pinnedIds?: Set<number>;
   onTogglePin?: (issue: RedmineIssue) => void;
-  favoriteIds?: Set<number>;
-  onToggleFavorite?: (issue: RedmineIssue) => void;
+  showFavoritesGroup?: boolean;
 }
 
 function ProjectGroupContent({
@@ -99,8 +98,7 @@ function ProjectGroupContent({
   dragHandleProps,
   pinnedIds,
   onTogglePin,
-  favoriteIds,
-  onToggleFavorite,
+  showFavoritesGroup,
 }: GroupProps) {
   const projectIssues = searchQuery.trim() ? searchFiltered[name] || [] : (grouped[name] ?? []);
 
@@ -112,7 +110,7 @@ function ProjectGroupContent({
         name={name}
         displayName={displayName}
         count={grouped[name]?.length ?? 0}
-        color={colorMap[name]}
+        color={showFavoritesGroup ? "var(--color-star, #f9ab00)" : colorMap[name]}
         isCollapsed={isCollapsed}
         onToggle={() => toggle(name)}
         dragHandleProps={dragHandleProps}
@@ -169,8 +167,7 @@ function ProjectGroupContent({
                 onFetchIssueDescription={onFetchIssueDescription}
                 isPinned={pinnedIds?.has(issue.id)}
                 onTogglePin={onTogglePin}
-                isFavorite={favoriteIds?.has(issue.id)}
-                onToggleFavorite={onToggleFavorite}
+                isFavoriteCard={showFavoritesGroup}
               />
             );
           })}

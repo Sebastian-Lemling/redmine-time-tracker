@@ -85,8 +85,6 @@ function makeProps(overrides?: Record<string, unknown>) {
     onSave: vi.fn(),
     onDiscard: vi.fn(),
     onAdjust: vi.fn(),
-    onRefresh: vi.fn(),
-    isRefreshing: false,
     redmineUrl: "http://redmine.test",
     onOpenBookDialog: vi.fn(),
     issueDescriptions: {},
@@ -164,14 +162,6 @@ describe("TicketList", () => {
     expect(screen.getByTitle(/expand|ausklappen/i)).toBeInTheDocument();
   });
 
-  it("refresh button calls onRefresh", () => {
-    const onRefresh = vi.fn();
-    render(<TicketList {...makeProps({ onRefresh })} />);
-    const refreshBtn = screen.getByTitle(/refresh|aktualisieren/i);
-    fireEvent.click(refreshBtn);
-    expect(onRefresh).toHaveBeenCalled();
-  });
-
   it("shows ActiveTimer bar when a timer is active", () => {
     const timers = {
       101: {
@@ -225,39 +215,23 @@ describe("TicketList", () => {
     expect(screen.getByText("Alpha Issue 1")).toBeInTheDocument();
   });
 
-  it("persists favorites group toggle to localStorage", () => {
+  it("persists favorites toggle to localStorage", () => {
     const favoriteIds = new Set([101]);
     render(<TicketList {...makeProps({ favoriteIds })} />);
-    const favBadge = screen.getByText(/favorit/i).closest("button")!;
-    fireEvent.click(favBadge);
+    const favBtn = screen.getByTitle(/favorit/i);
+    fireEvent.click(favBtn);
     expect(JSON.parse(localStorage.getItem("show-favorites-group")!)).toBe(true);
-    fireEvent.click(favBadge);
+    fireEvent.click(favBtn);
     expect(JSON.parse(localStorage.getItem("show-favorites-group")!)).toBe(false);
   });
 
-  it("restores favorites group state from localStorage", () => {
+  it("favorites mode shows only favorited issues grouped by project", () => {
     localStorage.setItem("show-favorites-group", "true");
     const favoriteIds = new Set([101]);
     render(<TicketList {...makeProps({ favoriteIds })} />);
-    // Favorites group header should be visible since state was restored
-    expect(screen.getByText(/★ favorit/i)).toBeInTheDocument();
-  });
-
-  it("favorites group shows translated name", () => {
-    localStorage.setItem("show-favorites-group", "true");
-    const favoriteIds = new Set([101]);
-    render(<TicketList {...makeProps({ favoriteIds })} />);
-    expect(screen.getByText(/★ favorit/i)).toBeInTheDocument();
-    expect(screen.queryByText("__favorites__")).not.toBeInTheDocument();
-  });
-
-  it("favorites group renders ticket cards when issues are favorited", () => {
-    localStorage.setItem("show-favorites-group", "true");
-    const favoriteIds = new Set([101, 201]);
-    render(<TicketList {...makeProps({ favoriteIds })} />);
-    // Favorites group duplicates issues from other groups, so multiple elements expected
-    expect(screen.getAllByText("Alpha Issue 1").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("Beta Issue 1").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Alpha Issue 1")).toBeInTheDocument();
+    expect(screen.queryByText("Alpha Issue 2")).not.toBeInTheDocument();
+    expect(screen.queryByText("Beta Issue 1")).not.toBeInTheDocument();
   });
 
   it("search by project name filters correctly", () => {
@@ -278,13 +252,29 @@ describe("TicketList", () => {
     expect(betaButton).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("favorites group has no drag handle", () => {
+  it("favorites mode shows empty state when no issues are favorited", () => {
+    localStorage.setItem("show-favorites-group", "true");
+    const favoriteIds = new Set([9999]);
+    render(<TicketList {...makeProps({ favoriteIds })} />);
+    expect(screen.getByText(/keine favoriten|no favorite/i)).toBeInTheDocument();
+    expect(screen.getByText(/markiere ein ticket|star a ticket/i)).toBeInTheDocument();
+  });
+
+  it("favorites mode with search shows no-results instead of no-favorites", () => {
     localStorage.setItem("show-favorites-group", "true");
     const favoriteIds = new Set([101]);
-    const { container } = render(<TicketList {...makeProps({ favoriteIds })} />);
-    const favHeader = screen.getByText(/★ favorit/i).closest("[class*='ticket-group']")!;
-    expect(favHeader.querySelector(".ticket-group__drag-handle")).not.toBeInTheDocument();
-    const allDragHandles = container.querySelectorAll(".ticket-group__drag-handle");
-    expect(allDragHandles.length).toBeGreaterThan(0);
+    render(<TicketList {...makeProps({ favoriteIds })} />);
+    const input = screen.getByPlaceholderText(/search|suche.*tickets/i);
+    fireEvent.change(input, { target: { value: "nonexistent" } });
+    expect(screen.getByText(/keine issues|no issues/i)).toBeInTheDocument();
+    expect(screen.queryByText(/markiere ein ticket|star a ticket/i)).not.toBeInTheDocument();
+  });
+
+  it("favorites mode disables pin toggle on cards", () => {
+    localStorage.setItem("show-favorites-group", "true");
+    const favoriteIds = new Set([101]);
+    const onTogglePin = vi.fn();
+    render(<TicketList {...makeProps({ favoriteIds, onTogglePin })} />);
+    expect(screen.queryByLabelText(/pin|anpinnen/i)).not.toBeInTheDocument();
   });
 });

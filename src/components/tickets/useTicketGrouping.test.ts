@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useTicketGrouping, PROJECT_COLORS, FAVORITES_GROUP_KEY } from "./useTicketGrouping";
+import { useTicketGrouping, PROJECT_COLORS } from "./useTicketGrouping";
 import type { RedmineIssue, MultiTimerMap } from "@/types/redmine";
 
 function makeIssue(id: number, project: string): RedmineIssue {
@@ -57,18 +57,12 @@ describe("useTicketGrouping", () => {
     );
     expect(result.current.colorMap["Alpha"]).toBe(PROJECT_COLORS[0]);
     expect(result.current.colorMap["Beta"]).toBe(PROJECT_COLORS[1]);
-    expect(result.current.colorMap["Alpha"]).toBe(PROJECT_COLORS[0]);
   });
 
   it("showTrackedOnly filters to issues with active timers", () => {
     const issues = [makeIssue(1, "P"), makeIssue(2, "P"), makeIssue(3, "Q")];
     const timers: MultiTimerMap = {
-      2: {
-        issueId: 2,
-        issueSubject: "x",
-        projectName: "P",
-        startTime: "2025-01-01",
-      },
+      2: { issueId: 2, issueSubject: "x", projectName: "P", startTime: "2025-01-01" },
     };
     const { result } = renderHook(() =>
       useTicketGrouping({ issues, timers, showTrackedOnly: true }),
@@ -86,8 +80,8 @@ describe("useTicketGrouping", () => {
     expect(result.current.grouped["P"]).toHaveLength(2);
   });
 
-  describe("favorites group", () => {
-    it("adds a virtual favorites group when showFavoritesGroup=true and favoriteIds has entries", () => {
+  describe("favorites mode", () => {
+    it("shows only favorite issues grouped by project when active", () => {
       const issues = [makeIssue(1, "Alpha"), makeIssue(2, "Alpha"), makeIssue(3, "Beta")];
       const favoriteIds = new Set([1, 3]);
       const { result } = renderHook(() =>
@@ -99,15 +93,13 @@ describe("useTicketGrouping", () => {
           favoriteIds,
         }),
       );
-      // Virtual favorites group exists with favorited issues
-      expect(result.current.grouped[FAVORITES_GROUP_KEY]).toHaveLength(2);
-      expect(result.current.grouped[FAVORITES_GROUP_KEY].map((i) => i.id)).toEqual([1, 3]);
-      // Real project groups still exist with ALL their issues
-      expect(result.current.grouped["Alpha"]).toHaveLength(2);
+      expect(result.current.grouped["Alpha"]).toHaveLength(1);
+      expect(result.current.grouped["Alpha"][0].id).toBe(1);
       expect(result.current.grouped["Beta"]).toHaveLength(1);
+      expect(result.current.grouped["Beta"][0].id).toBe(3);
     });
 
-    it("does not add favorites group when showFavoritesGroup=false", () => {
+    it("does not filter when showFavoritesGroup=false", () => {
       const issues = [makeIssue(1, "Alpha")];
       const favoriteIds = new Set([1]);
       const { result } = renderHook(() =>
@@ -119,10 +111,10 @@ describe("useTicketGrouping", () => {
           favoriteIds,
         }),
       );
-      expect(result.current.grouped[FAVORITES_GROUP_KEY]).toBeUndefined();
+      expect(result.current.grouped["Alpha"]).toHaveLength(1);
     });
 
-    it("does not add favorites group when favoriteIds is empty", () => {
+    it("returns all groups when favoriteIds is empty", () => {
       const issues = [makeIssue(1, "Alpha")];
       const favoriteIds = new Set<number>();
       const { result } = renderHook(() =>
@@ -134,49 +126,18 @@ describe("useTicketGrouping", () => {
           favoriteIds,
         }),
       );
-      expect(result.current.grouped[FAVORITES_GROUP_KEY]).toBeUndefined();
+      expect(result.current.grouped["Alpha"]).toHaveLength(1);
     });
 
-    it("does not add favorites group when favoriteIds is undefined", () => {
+    it("returns all groups when favoriteIds is undefined", () => {
       const issues = [makeIssue(1, "Alpha")];
       const { result } = renderHook(() =>
         useTicketGrouping({ issues, timers: {}, showTrackedOnly: false, showFavoritesGroup: true }),
       );
-      expect(result.current.grouped[FAVORITES_GROUP_KEY]).toBeUndefined();
+      expect(result.current.grouped["Alpha"]).toHaveLength(1);
     });
 
-    it("favorites group does not appear in allProjectNames", () => {
-      const issues = [makeIssue(1, "Alpha"), makeIssue(2, "Beta")];
-      const favoriteIds = new Set([1]);
-      const { result } = renderHook(() =>
-        useTicketGrouping({
-          issues,
-          timers: {},
-          showTrackedOnly: false,
-          showFavoritesGroup: true,
-          favoriteIds,
-        }),
-      );
-      expect(result.current.allProjectNames).toEqual(["Alpha", "Beta"]);
-      expect(result.current.allProjectNames).not.toContain(FAVORITES_GROUP_KEY);
-    });
-
-    it("colorMap includes amber color for favorites group key", () => {
-      const issues = [makeIssue(1, "Alpha")];
-      const favoriteIds = new Set([1]);
-      const { result } = renderHook(() =>
-        useTicketGrouping({
-          issues,
-          timers: {},
-          showTrackedOnly: false,
-          showFavoritesGroup: true,
-          favoriteIds,
-        }),
-      );
-      expect(result.current.colorMap[FAVORITES_GROUP_KEY]).toBe("#f9ab00");
-    });
-
-    it("favorites group works with showTrackedOnly", () => {
+    it("works with showTrackedOnly", () => {
       const issues = [makeIssue(1, "P"), makeIssue(2, "P")];
       const favoriteIds = new Set([1, 2]);
       const timers: MultiTimerMap = {
@@ -191,12 +152,11 @@ describe("useTicketGrouping", () => {
           favoriteIds,
         }),
       );
-      // Only issue 1 has a timer, so favorites group only contains issue 1
-      expect(result.current.grouped[FAVORITES_GROUP_KEY]).toHaveLength(1);
-      expect(result.current.grouped[FAVORITES_GROUP_KEY][0].id).toBe(1);
+      expect(result.current.grouped["P"]).toHaveLength(1);
+      expect(result.current.grouped["P"][0].id).toBe(1);
     });
 
-    it("favorite IDs not matching any issue → no favorites group", () => {
+    it("favorite IDs not matching any issue → returns empty groups", () => {
       const issues = [makeIssue(1, "A")];
       const favoriteIds = new Set([999]);
       const { result } = renderHook(() =>
@@ -208,10 +168,10 @@ describe("useTicketGrouping", () => {
           favoriteIds,
         }),
       );
-      expect(result.current.grouped[FAVORITES_GROUP_KEY]).toBeUndefined();
+      expect(Object.keys(result.current.grouped)).toHaveLength(0);
     });
 
-    it("showTrackedOnly filters out all favorited issues → no favorites group", () => {
+    it("showTrackedOnly filters out all favorited issues → returns base groups", () => {
       const issues = [makeIssue(1, "P"), makeIssue(2, "P")];
       const favoriteIds = new Set([1, 2]);
       const { result } = renderHook(() =>
@@ -223,7 +183,7 @@ describe("useTicketGrouping", () => {
           favoriteIds,
         }),
       );
-      expect(result.current.grouped[FAVORITES_GROUP_KEY]).toBeUndefined();
+      expect(result.current.grouped["P"]).toBeUndefined();
     });
   });
 
@@ -235,9 +195,7 @@ describe("useTicketGrouping", () => {
     const { result } = renderHook(() =>
       useTicketGrouping({ issues, timers: {}, showTrackedOnly: false }),
     );
-    const projectKeys = Object.keys(result.current.colorMap).filter(
-      (k) => k !== FAVORITES_GROUP_KEY,
-    );
+    const projectKeys = Object.keys(result.current.colorMap);
     expect(projectKeys).toHaveLength(count);
     const sorted = [...projectKeys].sort();
     expect(result.current.colorMap[sorted[PROJECT_COLORS.length]]).toBe(

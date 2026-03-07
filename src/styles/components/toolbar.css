@@ -207,6 +207,7 @@
 }
 .ticket-toolbar__search:focus-within {
   background: var(--color-surface-container-highest);
+  border-color: var(--color-primary);
 }
 .ticket-toolbar__search .search-icon {
   color: var(--color-on-surface-variant);
@@ -231,6 +232,31 @@
   opacity: 0.7;
 }
 
+/* Keyboard shortcut hint */
+.ticket-toolbar__kbd-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.ticket-toolbar__kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  opacity: 0.6;
+}
 /* Actions group — separated from search bar */
 .ticket-toolbar__actions {
   display: flex;
@@ -285,12 +311,22 @@
   margin: 0;
 }
 
-/* Half-width panel that holds the ticket list */
-.ticket-panel {
-  flex: 0 1 50%;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
+/* Favorites header — gold tinted bar above ticket list */
+.ticket-layout__fav-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-on-surface);
+  background: color-mix(in srgb, var(--color-star, #f9ab00) 4%, var(--color-surface));
+  box-shadow: inset 0 -1px 0 var(--color-outline-variant);
+  flex-shrink: 0;
+}
+.ticket-layout__fav-header svg {
+  flex-shrink: 0;
+  color: var(--color-star, #f9ab00);
 }
 
 /* Dark mode: lifted container on darker gutter */
@@ -298,4 +334,7 @@
   background: var(--color-surface-container);
   border-color: var(--color-outline-variant);
   box-shadow: none;
+}
+[data-theme="dark"] .ticket-layout__fav-header {
+  background: color-mix(in srgb, var(--color-star, #f9ab00) 6%, var(--color-surface-container));
 }

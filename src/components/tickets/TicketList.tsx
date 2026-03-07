@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { Star } from "lucide-react";
 import { safeGet, safeSet } from "@/lib/storage";
 import {
   DndContext,
@@ -23,7 +24,7 @@ import type {
 import { TicketListToolbar } from "./TicketListToolbar";
 import { DragOverlayHeader } from "./ProjectGroupHeader";
 import { PlainProjectGroup, SortableProjectGroup } from "./ProjectGroup";
-import { useTicketGrouping, PROJECT_COLORS, FAVORITES_GROUP_KEY } from "./useTicketGrouping";
+import { useTicketGrouping, PROJECT_COLORS } from "./useTicketGrouping";
 import { useProjectOrder } from "./useProjectOrder";
 import { useEnabledProjects } from "./useEnabledProjects";
 import { ActiveTimer } from "../timelog";
@@ -55,8 +56,6 @@ interface Props {
   onSave: (issueId: number) => void;
   onDiscard: (issueId: number) => void;
   onAdjust: (issueId: number, deltaSec: number) => void;
-  onRefresh: () => void;
-  isRefreshing?: boolean;
   redmineUrl: string;
   onOpenBookDialog: (issue: RedmineIssue) => void;
   issueDescriptions: Record<number, string>;
@@ -95,8 +94,6 @@ export function TicketList({
   onSave,
   onDiscard,
   onAdjust,
-  onRefresh,
-  isRefreshing,
   onOpenBookDialog,
   issueDescriptions,
   issueComments,
@@ -104,7 +101,6 @@ export function TicketList({
   pinnedIds,
   onTogglePin,
   favoriteIds,
-  onToggleFavorite,
 }: Props) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -132,10 +128,11 @@ export function TicketList({
   } = useEnabledProjects(allProjectNames);
 
   const filteredProjectNames = useMemo(() => {
-    const real = projectOrder.filter((name) => enabledProjects.has(name) && grouped[name]);
-    if (grouped[FAVORITES_GROUP_KEY]) return [FAVORITES_GROUP_KEY, ...real];
-    return real;
-  }, [projectOrder, enabledProjects, grouped]);
+    if (showFavoritesGroup) {
+      return Object.keys(grouped).sort();
+    }
+    return projectOrder.filter((name) => enabledProjects.has(name) && grouped[name]);
+  }, [projectOrder, enabledProjects, grouped, showFavoritesGroup]);
 
   const filterProjects = useMemo(
     () => allProjectNames.map((name) => ({ name, count: grouped[name]?.length ?? 0 })),
@@ -214,9 +211,8 @@ export function TicketList({
     issueComments,
     onFetchIssueDescription,
     pinnedIds,
-    onTogglePin,
-    favoriteIds,
-    onToggleFavorite,
+    onTogglePin: showFavoritesGroup ? undefined : onTogglePin,
+    showFavoritesGroup,
   };
 
   return (
@@ -239,11 +235,8 @@ export function TicketList({
               return !v;
             })
           }
-          favoriteCount={favoriteIds?.size ?? 0}
           allExpanded={allExpanded}
           onToggleAll={toggleAll}
-          onRefresh={onRefresh}
-          isRefreshing={isRefreshing}
         />
 
         {allProjectNames.length === 0 && !loading && (
@@ -253,16 +246,34 @@ export function TicketList({
           </div>
         )}
 
+        {showFavoritesGroup && displayProjectNames.length === 0 && (
+          <div className="py-12 text-center">
+            <Star
+              size={32}
+              className="mx-auto mb-4"
+              style={{ color: "var(--color-star, #f9ab00)", opacity: 0.4 }}
+            />
+            <p className="md-body-medium" style={{ color: "var(--color-on-surface-variant)" }}>
+              {isSearching ? t.noSearchResults : t.noFavorites}
+            </p>
+            {!isSearching && (
+              <p
+                style={{
+                  color: "var(--color-on-surface-variant)",
+                  marginTop: "8px",
+                  fontSize: "12px",
+                }}
+              >
+                {t.starATicketToAdd}
+              </p>
+            )}
+          </div>
+        )}
+
         {isSearching ? (
           <div className="ticket-layout__body">
             {displayProjectNames.map((name, i) => (
-              <PlainProjectGroup
-                key={name}
-                name={name}
-                displayName={name === FAVORITES_GROUP_KEY ? t.favoritesGroup : undefined}
-                index={i}
-                {...groupProps}
-              />
+              <PlainProjectGroup key={name} name={name} index={i} {...groupProps} />
             ))}
           </div>
         ) : (
@@ -273,32 +284,23 @@ export function TicketList({
             onDragEnd={(e) => handleDragEnd(e, setCollapsed)}
             measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           >
-            <SortableContext
-              items={displayProjectNames.filter((n) => n !== FAVORITES_GROUP_KEY)}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={displayProjectNames} strategy={verticalListSortingStrategy}>
               <div className="ticket-layout__body">
-                {displayProjectNames.map((name, i) =>
-                  name === FAVORITES_GROUP_KEY ? (
-                    <PlainProjectGroup
-                      key={name}
-                      name={name}
-                      displayName={t.favoritesGroup}
-                      index={i}
-                      {...groupProps}
-                    />
-                  ) : (
-                    <SortableProjectGroup key={name} name={name} index={i} {...groupProps} />
-                  ),
-                )}
+                {displayProjectNames.map((name, i) => (
+                  <SortableProjectGroup key={name} name={name} index={i} {...groupProps} />
+                ))}
               </div>
             </SortableContext>
             <DragOverlay dropAnimation={null}>
               {dragActiveId ? (
                 <DragOverlayHeader
-                  name={dragActiveId === FAVORITES_GROUP_KEY ? t.favoritesGroup : dragActiveId}
+                  name={dragActiveId}
                   count={grouped[dragActiveId]?.length ?? 0}
-                  color={colorMap[dragActiveId] ?? PROJECT_COLORS[0]}
+                  color={
+                    showFavoritesGroup
+                      ? "var(--color-star, #f9ab00)"
+                      : (colorMap[dragActiveId] ?? PROJECT_COLORS[0])
+                  }
                 />
               ) : null}
             </DragOverlay>
