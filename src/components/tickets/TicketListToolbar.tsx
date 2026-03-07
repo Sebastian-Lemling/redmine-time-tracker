@@ -1,5 +1,7 @@
-import { Search, ChevronsUpDown, RefreshCw, X, Timer, Star } from "lucide-react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { Search, ChevronsUpDown, Timer, Star as StarIcon, ChevronDown } from "lucide-react";
 import { useI18n } from "../../i18n/I18nContext";
+import { useOverflowChips } from "../../hooks/useOverflowChips";
 
 interface Props {
   searchQuery: string;
@@ -13,11 +15,8 @@ interface Props {
   onToggleTrackedOnly: () => void;
   showFavoritesOnly: boolean;
   onToggleFavoritesOnly: () => void;
-  favoriteCount: number;
   allExpanded: boolean;
   onToggleAll: () => void;
-  onRefresh: () => void;
-  isRefreshing?: boolean;
 }
 
 export function TicketListToolbar({
@@ -32,15 +31,86 @@ export function TicketListToolbar({
   onToggleTrackedOnly,
   showFavoritesOnly,
   onToggleFavoritesOnly,
-  favoriteCount,
   allExpanded,
   onToggleAll,
-  onRefresh,
-  isRefreshing,
 }: Props) {
   const { t } = useI18n();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [inputFocused, setInputFocused] = useState(false);
   const allEnabled = filterProjects.every((p) => enabledProjects.has(p.name));
   const totalCount = filterProjects.reduce((s, p) => s + p.count, 0);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "o") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+      if (e.key === "Escape" && document.activeElement === inputRef.current) {
+        e.preventDefault();
+        onSearchChange("");
+        inputRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onSearchChange]);
+
+  const allChips = useMemo(() => {
+    const chips: { key: string; label: string; count: number; color?: string; isAll?: boolean }[] =
+      [];
+    chips.push({ key: "__all__", label: t.all, count: totalCount, isAll: true });
+    for (const p of filterProjects)
+      chips.push({ key: p.name, label: p.name, count: p.count, color: colorMap[p.name] });
+    return chips;
+  }, [filterProjects, totalCount, colorMap, t]);
+
+  const { containerRef, visibleCount } = useOverflowChips(allChips.length);
+  const visibleChips = allChips.slice(0, visibleCount);
+  const overflowChips = allChips.slice(visibleCount);
+
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  const handleChipClick = useCallback(
+    (chip: (typeof allChips)[0]) => {
+      if (chip.isAll) onToggleAllProjects();
+      else onToggleProject(chip.key);
+    },
+    [onToggleAllProjects, onToggleProject],
+  );
+
+  const isActive = useCallback(
+    (chip: (typeof allChips)[0]) => {
+      if (chip.isAll) return allEnabled;
+      return enabledProjects.has(chip.key);
+    },
+    [allEnabled, enabledProjects],
+  );
+
+  useEffect(() => {
+    if (!overflowOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node))
+        setOverflowOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [overflowOpen]);
+
+  const renderChip = (chip: (typeof allChips)[0]) => (
+    <button
+      key={chip.key}
+      className={`filter-chip${isActive(chip) ? " filter-chip--active" : ""}`}
+      onClick={() => handleChipClick(chip)}
+    >
+      {chip.color && <span className="filter-chip__dot" style={{ background: chip.color }} />}
+      <span className="filter-chip__label">{chip.label}</span>
+      <span className="filter-chip__count">{chip.count}</span>
+    </button>
+  );
 
   return (
     <div className="ticket-layout__header">
@@ -48,20 +118,34 @@ export function TicketListToolbar({
         <div className="ticket-toolbar__search">
           <Search size={20} className="search-icon" />
           <input
+            ref={inputRef}
             type="text"
             placeholder={t.searchTickets}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             className="ticket-toolbar__input"
           />
-          {searchQuery && (
-            <button
-              onClick={() => onSearchChange("")}
-              className="ticket-toolbar__btn ticket-toolbar__btn--clear"
-              title="Clear"
+          {inputFocused || searchQuery ? (
+            <kbd
+              className="ticket-toolbar__kbd"
+              style={{ pointerEvents: "auto", cursor: "pointer" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onSearchChange("");
+                inputRef.current?.blur();
+              }}
             >
-              <X size={16} />
-            </button>
+              Esc
+            </kbd>
+          ) : (
+            <span className="ticket-toolbar__kbd-group">
+              <kbd className="ticket-toolbar__kbd">
+                {/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl"}
+              </kbd>
+              <kbd className="ticket-toolbar__kbd">O</kbd>
+            </span>
           )}
         </div>
         <div className="ticket-toolbar__actions">
@@ -81,55 +165,57 @@ export function TicketListToolbar({
             <ChevronsUpDown size={20} />
           </button>
           <button
-            onClick={onRefresh}
-            className={`ticket-toolbar__btn${isRefreshing ? " ticket-toolbar__btn--refreshing" : ""}`}
-            title={t.refresh}
-            disabled={isRefreshing}
+            onClick={onToggleFavoritesOnly}
+            className="ticket-toolbar__btn"
+            style={showFavoritesOnly ? { color: "var(--color-star, #f9ab00)" } : {}}
+            title={t.favorites}
           >
-            <RefreshCw size={20} />
+            <StarIcon size={20} fill={showFavoritesOnly ? "var(--color-star, #f9ab00)" : "none"} />
           </button>
         </div>
       </div>
-      {(filterProjects.length > 1 || favoriteCount > 0) && (
-        <div className="project-filter-bar">
-          <button
-            className={`project-filter-badge${allEnabled ? " project-filter-badge--active" : ""}`}
-            onClick={onToggleAllProjects}
-          >
-            <span className="project-filter-badge__label">{t.all}</span>
-            <span className="project-filter-badge__count">{totalCount}</span>
-          </button>
-          {favoriteCount > 0 && (
-            <button
-              className={`project-filter-badge${showFavoritesOnly ? " project-filter-badge--active" : ""}`}
-              onClick={onToggleFavoritesOnly}
-              style={showFavoritesOnly ? { borderColor: "var(--color-star, #f9ab00)" } : {}}
-            >
-              <Star
-                size={10}
-                fill={showFavoritesOnly ? "var(--color-star, #f9ab00)" : "none"}
-                stroke={showFavoritesOnly ? "var(--color-star, #f9ab00)" : "currentColor"}
-              />
-              <span className="project-filter-badge__label">{t.favorites}</span>
-              <span className="project-filter-badge__count">{favoriteCount}</span>
-            </button>
-          )}
-          {filterProjects.map((p) => (
-            <button
-              key={p.name}
-              className={`project-filter-badge${enabledProjects.has(p.name) ? " project-filter-badge--active" : ""}`}
-              onClick={() => onToggleProject(p.name)}
-            >
-              <span
-                className="project-filter-badge__dot"
-                style={{ background: colorMap[p.name] }}
-              />
-              <span className="project-filter-badge__label">{p.name}</span>
-              <span className="project-filter-badge__count">{p.count}</span>
-            </button>
-          ))}
+      {showFavoritesOnly ? (
+        <div className="ticket-layout__fav-header">
+          <StarIcon
+            size={16}
+            fill="var(--color-star, #f9ab00)"
+            stroke="var(--color-star, #f9ab00)"
+          />
+          <span>{t.favorites}</span>
         </div>
-      )}
+      ) : filterProjects.length > 1 ? (
+        <div className="project-filter-bar" ref={containerRef}>
+          {visibleChips.map(renderChip)}
+          {overflowChips.length > 0 && (
+            <div className="project-filter-overflow" ref={overflowRef} data-overflow-trigger>
+              <button
+                className="filter-chip project-filter-overflow__trigger"
+                onClick={() => setOverflowOpen((o) => !o)}
+              >
+                <span className="filter-chip__label">+{overflowChips.length}</span>
+                <ChevronDown size={14} />
+              </button>
+              {overflowOpen && (
+                <div className="project-filter-overflow__menu">
+                  {overflowChips.map((chip) => (
+                    <button
+                      key={chip.key}
+                      className={`project-filter-overflow__item${isActive(chip) ? " project-filter-overflow__item--active" : ""}`}
+                      onClick={() => handleChipClick(chip)}
+                    >
+                      {chip.color && (
+                        <span className="filter-chip__dot" style={{ background: chip.color }} />
+                      )}
+                      <span>{chip.label}</span>
+                      <span className="project-filter-overflow__count">{chip.count}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

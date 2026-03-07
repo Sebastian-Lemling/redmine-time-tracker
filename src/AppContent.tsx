@@ -25,7 +25,7 @@ interface Props {
   issues: RedmineIssue[];
   pinnedIds: Set<number>;
   pinnedIssues: RedmineIssue[];
-  recentlyPinned: RedmineIssue[];
+
   onTogglePin: (issue: RedmineIssue) => void;
   onToggleAssignedPin: (issue: RedmineIssue) => void;
   favoriteIds: Set<number>;
@@ -58,8 +58,6 @@ interface Props {
   onFetchMembers: (projectId: number) => Promise<void>;
   onFetchVersions: (projectId: number) => Promise<void>;
   onFetchIssueDescription: (issueId: number) => Promise<void>;
-  onFetchIssues: () => void;
-  isRefreshing: boolean;
   fetchIssueSubject: (issueId: number) => Promise<void>;
   fetchRemoteEntries: (from: string, to: string, force?: boolean) => Promise<void>;
   refreshRemoteEntries: () => void;
@@ -120,8 +118,6 @@ export default function AppContent(props: Props) {
                 onSave={props.onSave}
                 onDiscard={props.onDiscard}
                 onAdjust={props.onAdjust}
-                onRefresh={props.onFetchIssues}
-                isRefreshing={props.isRefreshing}
                 onOpenBookDialog={props.onOpenBookDialog}
                 issueDescriptions={props.issueDescriptions}
                 issueComments={props.issueComments}
@@ -137,7 +133,6 @@ export default function AppContent(props: Props) {
               <SearchPanel
                 pinnedIds={props.pinnedIds}
                 pinnedIssues={props.pinnedIssues}
-                recentlyPinned={props.recentlyPinned}
                 assignedIds={props.assignedIdSet}
                 assignedIssues={props.assignedIssues}
                 onTogglePin={props.onTogglePin}
@@ -153,6 +148,7 @@ export default function AppContent(props: Props) {
                 favoriteIds={props.favoriteIds}
                 onToggleFavorite={props.onToggleFavorite}
                 onOpenBookDialog={props.onOpenBookDialog}
+                onShowMessage={props.onShowMessage}
               />
             </ErrorBoundary>
           </div>

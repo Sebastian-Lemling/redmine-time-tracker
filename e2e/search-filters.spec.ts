@@ -123,13 +123,13 @@ test("clear filters resets all active filters", async ({ page }) => {
   await listbox.getByRole("option", { name: "In Progress" }).click();
   await page.waitForTimeout(500);
 
-  await expect(statusChip).toHaveClass(/search-chip--active/);
+  await expect(statusChip).toHaveClass(/filter-chip--active/);
 
-  const clearButton = page.locator(".ticket-panel--right .search-chip--clear");
+  const clearButton = page.locator(".ticket-panel--right .filter-chip--clear");
   await clearButton.click();
   await page.waitForTimeout(500);
 
-  await expect(statusChip).not.toHaveClass(/search-chip--active/);
+  await expect(statusChip).not.toHaveClass(/filter-chip--active/);
 });
 
 test("escape clears search text", async ({ page }) => {

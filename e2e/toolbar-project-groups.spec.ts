@@ -83,14 +83,14 @@ test.describe("Toolbar and project groups", () => {
     await expect(panel.locator(".ticket-group__name").getByText("Project Beta")).toBeVisible();
 
     // Clicking Beta toggles it OFF → only Alpha remains
-    const betaBadge = panel.locator(".project-filter-badge", { hasText: "Project Beta" });
+    const betaBadge = panel.locator(".filter-chip", { hasText: "Project Beta" });
     await betaBadge.click();
 
     await expect(panel.locator(".ticket-group__name").getByText("Project Alpha")).toBeVisible();
     await expect(panel.locator(".ticket-group__name").getByText("Project Beta")).not.toBeVisible();
 
     // Click "All" to re-enable all
-    const allBadge = panel.locator(".project-filter-badge").first();
+    const allBadge = panel.locator(".filter-chip").first();
     await allBadge.click();
 
     await expect(panel.locator(".ticket-group__name").getByText("Project Alpha")).toBeVisible();

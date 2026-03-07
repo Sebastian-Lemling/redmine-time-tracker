@@ -201,7 +201,7 @@ export interface Translations {
   loadMore: string;
   clearFilters: string;
   pinnedTickets: string;
-  recentlyPinned: string;
+
   allStatuses: string;
   allTrackers: string;
   allPriorities: string;
@@ -226,6 +226,8 @@ export interface Translations {
   clearSearchInput: string;
   filterByLabel: (param: string) => string;
   filterMenuOpen: string;
+  filterSearchPlaceholder: string;
+  noFilterResults: string;
   resultsFound: (count: number) => string;
   pinIssue: (id: number) => string;
   unpinIssue: (id: number) => string;
@@ -246,6 +248,8 @@ export interface Translations {
   // Recent searches
   recentSearches: string;
   clearRecentSearches: string;
+  removeRecentSearch: string;
+  closeSearch: string;
 
   // Sort options
   sortBy: string;
@@ -283,6 +287,19 @@ export interface Translations {
   favoriteIssue: (id: number) => string;
   unfavoriteIssue: (id: number) => string;
   noFavorites: string;
+  starATicketToAdd: string;
+
+  // SearchResultCard actions
+  openInRedmine: (id: number) => string;
+  issuePinned: (id: number) => string;
+  issueUnpinned: (id: number) => string;
+  issueFavorited: (id: number) => string;
+  issueUnfavorited: (id: number) => string;
+
+  // Relative time
+  timeAgo: (value: number, unit: "minute" | "hour" | "day" | "week" | "month") => string;
+  justNow: string;
+  updated: string;
 }
 
 export const de: Translations = {
@@ -474,7 +491,7 @@ export const de: Translations = {
   loadMore: "Mehr laden",
   clearFilters: "Filter zurücksetzen",
   pinnedTickets: "Angepinnt",
-  recentlyPinned: "Zuletzt",
+
   allStatuses: "Alle Status",
   allTrackers: "Alle Tracker",
   allPriorities: "Alle Prioritäten",
@@ -497,6 +514,8 @@ export const de: Translations = {
   clearSearchInput: "Suche leeren",
   filterByLabel: (param) => `Filtern nach ${param}`,
   filterMenuOpen: "Filtermenü geöffnet",
+  filterSearchPlaceholder: "Filtern…",
+  noFilterResults: "Keine Treffer",
   resultsFound: (count) => `${count} Ergebnisse gefunden`,
   pinIssue: (id) => `Ticket #${id} anpinnen`,
   unpinIssue: (id) => `Ticket #${id} loslösen`,
@@ -512,6 +531,8 @@ export const de: Translations = {
 
   recentSearches: "Letzte Suchen",
   clearRecentSearches: "Suchverlauf leeren",
+  removeRecentSearch: "Sucheintrag entfernen",
+  closeSearch: "Suche schließen",
 
   sortBy: "Sortierung",
   sortUpdatedDesc: "Zuletzt aktualisiert",
@@ -542,7 +563,27 @@ export const de: Translations = {
   favoritesGroup: "★ Favoriten",
   favoriteIssue: (id) => `Ticket #${id} als Favorit markieren`,
   unfavoriteIssue: (id) => `Ticket #${id} aus Favoriten entfernen`,
-  noFavorites: "Keine Favoriten.",
+  noFavorites: "Keine Favoriten vorhanden",
+  starATicketToAdd: "Markiere ein Ticket mit einem Stern, um es hier zu sehen",
+
+  openInRedmine: (id) => `#${id} in Redmine öffnen`,
+  issuePinned: (id) => `Ticket #${id} angepinnt`,
+  issueUnpinned: (id) => `Ticket #${id} losgelöst`,
+  issueFavorited: (id) => `Ticket #${id} als Favorit markiert`,
+  issueUnfavorited: (id) => `Ticket #${id} aus Favoriten entfernt`,
+
+  timeAgo: (value, unit) => {
+    const units: Record<string, string> = {
+      minute: "Min.",
+      hour: "Std.",
+      day: "T.",
+      week: "Wo.",
+      month: "Mon.",
+    };
+    return `vor ${value} ${units[unit]}`;
+  },
+  justNow: "Gerade eben",
+  updated: "Aktualisiert",
 };
 
 export const en: Translations = {
@@ -733,7 +774,7 @@ export const en: Translations = {
   loadMore: "Load more",
   clearFilters: "Clear filters",
   pinnedTickets: "Pinned",
-  recentlyPinned: "Recent",
+
   allStatuses: "All statuses",
   allTrackers: "All trackers",
   allPriorities: "All priorities",
@@ -756,6 +797,8 @@ export const en: Translations = {
   clearSearchInput: "Clear search",
   filterByLabel: (param) => `Filter by ${param}`,
   filterMenuOpen: "Filter menu open",
+  filterSearchPlaceholder: "Filter…",
+  noFilterResults: "No matches",
   resultsFound: (count) => `${count} results found`,
   pinIssue: (id) => `Pin issue #${id}`,
   unpinIssue: (id) => `Unpin issue #${id}`,
@@ -771,6 +814,8 @@ export const en: Translations = {
 
   recentSearches: "Recent searches",
   clearRecentSearches: "Clear search history",
+  removeRecentSearch: "Remove search",
+  closeSearch: "Close search",
 
   sortBy: "Sort by",
   sortUpdatedDesc: "Recently updated",
@@ -800,7 +845,27 @@ export const en: Translations = {
   favoritesGroup: "★ Favorites",
   favoriteIssue: (id) => `Add issue #${id} to favorites`,
   unfavoriteIssue: (id) => `Remove issue #${id} from favorites`,
-  noFavorites: "No favorites.",
+  noFavorites: "No favorite tickets yet",
+  starATicketToAdd: "Star a ticket to add it to your favorites",
+
+  openInRedmine: (id) => `Open #${id} in Redmine`,
+  issuePinned: (id) => `Issue #${id} pinned`,
+  issueUnpinned: (id) => `Issue #${id} unpinned`,
+  issueFavorited: (id) => `Issue #${id} added to favorites`,
+  issueUnfavorited: (id) => `Issue #${id} removed from favorites`,
+
+  timeAgo: (value, unit) => {
+    const units: Record<string, string> = {
+      minute: "min",
+      hour: "hr",
+      day: "d",
+      week: "wk",
+      month: "mo",
+    };
+    return `${value}${units[unit]} ago`;
+  },
+  justNow: "Just now",
+  updated: "Updated",
 };
 
 export type Locale = "en" | "de";

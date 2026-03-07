@@ -8,7 +8,7 @@
   align-items: center;
   gap: 8px;
   min-height: 48px;
-  padding: 10px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--color-outline-variant);
   background: var(--color-surface-container-lowest);
   position: relative;
@@ -34,7 +34,7 @@
 .card-header__id-badge {
   display: inline-flex;
   align-items: center;
-  height: 28px;
+  height: 32px;
   border-radius: 8px;
   border: 1px solid var(--color-outline-variant);
   background: transparent;
@@ -63,7 +63,7 @@
   text-decoration: none;
   white-space: nowrap;
   padding: 0 10px 0 6px;
-  line-height: 28px;
+  line-height: 32px;
   display: inline-block;
 }
 a.card-header__badge-label:hover {
@@ -113,6 +113,10 @@ a.card-header__badge-label:hover {
   opacity: 1;
   background: color-mix(in srgb, var(--color-on-surface) 16%, transparent);
 }
+.card-header__badge-copy:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
 .card-header__badge-copy > svg {
   transition: transform 150ms var(--md-motion-easing-emphasized);
 }
@@ -147,8 +151,8 @@ a.card-header__badge-label:hover {
 /* Pin button in card header — styled like progress-ring */
 .card-header__pin-btn {
   position: relative;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
   background: none;
   padding: 0;
@@ -163,6 +167,10 @@ a.card-header__badge-label:hover {
 .card-header__pin-btn:active {
   background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
 }
+.card-header__pin-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
 .card-header__pin-btn svg.card-header__pin-ring {
   position: absolute;
   inset: 0;
@@ -173,6 +181,7 @@ a.card-header__badge-label:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translate(-0.5px, 0.5px);
 }
 
 /* Ghost pin button — unpinned state: same look, just dimmed */
@@ -186,58 +195,6 @@ a.card-header__badge-label:hover {
 }
 .card-header__pin-btn--ghost:hover {
   opacity: 1 !important;
-}
-
-/* Star (favorite) button in card header */
-.card-header__star-btn {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: background 150ms ease;
-  color: var(--color-star, #f9ab00);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.card-header__star-btn:hover {
-  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
-}
-.card-header__star-btn:active {
-  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
-}
-.card-header__star-btn svg.card-header__star-ring {
-  position: absolute;
-  inset: 0;
-}
-.card-header__star-btn .card-header__star-icon {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Ghost star — same look, just dimmed */
-.card-header__star-btn--ghost {
-  color: var(--color-star, #f9ab00);
-  opacity: 0.4;
-  transition: opacity 150ms ease;
-}
-.ticket-card:hover .card-header__star-btn--ghost {
-  opacity: 0.6;
-}
-.card-header__star-btn--ghost:hover {
-  opacity: 1 !important;
-}
-
-/* Filled star — favorited state */
-.card-header__star-btn--filled {
-  color: var(--color-star, #f9ab00);
 }
 
 /* Close booking button overlaid in header trailing area */
@@ -269,16 +226,20 @@ a.card-header__badge-label:hover {
   width: 100%;
   background: none;
   border: none;
-  padding: 2px 4px 2px 0;
+  padding: 4px 8px 4px 0;
   cursor: pointer;
   text-align: left;
   color: inherit;
   font: inherit;
   min-width: 0;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 .card-body__subject-row:hover {
   background: color-mix(in srgb, var(--color-on-surface) 5%, transparent);
+}
+.card-body__subject-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
 /* Expand/collapse chevron */
@@ -344,7 +305,7 @@ a.card-header__badge-label:hover {
 }
 .card-body__description--open > * {
   padding-top: 8px;
-  padding-left: 20px;
+  padding-left: 16px;
 }
 
 /* Markdown inside description */
@@ -422,11 +383,11 @@ a.card-header__badge-label:hover {
 /* Comments (journals) inside description expand */
 .card-body__comments {
   margin-top: 12px;
-  padding-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-outline-variant);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .card-body__comments-title {
   font-size: 11px;
@@ -569,35 +530,106 @@ a.card-header__badge-label:hover {
   background: var(--project-color);
 }
 
+/* --- Favorite state --- */
+.ticket-card--favorite {
+  --project-color: var(--color-star, #f9ab00);
+}
+.ticket-card--favorite .card-header {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-star, #f9ab00) 8%, var(--color-surface-container-lowest)) 0%,
+    var(--color-surface-container-lowest) 60%
+  );
+}
+.ticket-card--favorite .card-header__badge-dot {
+  background: var(--color-star, #f9ab00) !important;
+}
+.ticket-card--favorite::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 2;
+  background: var(--color-star, #f9ab00);
+}
+[data-theme="dark"] .ticket-card--favorite .card-header {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-star, #f9ab00) 12%, var(--color-surface-container)) 0%,
+    var(--color-surface-container) 60%
+  );
+}
+
 /* --- Timer states --- */
+@property --card-glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
 .ticket-card--running {
-  border-color: var(--color-primary);
-  outline: 1px solid var(--color-primary);
-  outline-offset: -1px;
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  box-shadow:
+    0 0 12px -2px color-mix(in srgb, var(--color-primary) 20%, transparent),
+    0 0 4px -1px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+.ticket-card--running::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--card-glow-angle),
+    transparent 0%,
+    transparent 30%,
+    var(--color-primary) 50%,
+    transparent 70%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+  animation: card-glow-rotate 3s linear infinite;
+}
+@keyframes card-glow-rotate {
+  to {
+    --card-glow-angle: 360deg;
+  }
+}
+
+.ticket-card--favorite.ticket-card--running {
+  border-color: color-mix(in srgb, var(--color-star, #f9ab00) 30%, transparent);
+  box-shadow:
+    0 0 12px -2px color-mix(in srgb, var(--color-star, #f9ab00) 20%, transparent),
+    0 0 4px -1px color-mix(in srgb, var(--color-star, #f9ab00) 10%, transparent);
+}
+.ticket-card--favorite.ticket-card--running::after {
+  background: conic-gradient(
+    from var(--card-glow-angle),
+    transparent 0%,
+    transparent 30%,
+    var(--color-star, #f9ab00) 50%,
+    transparent 70%,
+    transparent 100%
+  );
 }
 
 .ticket-card--paused {
   border-color: var(--color-outline);
 }
 
-/* Running timer accent — no animation, just static bar
-}
-
 /* ============================================================================
    PINNED GROUP — in TicketList
    ============================================================================ */
-
-.ticket-group--pinned .ticket-group__header {
-  color: var(--color-primary);
-}
-
-.ticket-group--pinned .ticket-group__color-dot {
-  background: var(--color-primary) !important;
-}
-
-.ticket-group--pinned .ticket-group__name {
-  color: var(--color-primary);
-}
 
 /* ============================================================================
    CARD — Dark theme overrides

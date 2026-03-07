@@ -8,6 +8,7 @@ const mockResetFilters = vi.fn();
 const mockLoadMore = vi.fn();
 const mockRetry = vi.fn();
 const mockApplyRecentSearch = vi.fn();
+const mockRemoveRecentSearch = vi.fn();
 const mockClearRecent = vi.fn();
 
 const defaultSearchReturn = {
@@ -30,6 +31,7 @@ const defaultSearchReturn = {
   retry: mockRetry,
   recentSearches: [] as string[],
   applyRecentSearch: mockApplyRecentSearch,
+  removeRecentSearch: mockRemoveRecentSearch,
   clearRecent: mockClearRecent,
 };
 
@@ -47,7 +49,7 @@ function makeProps(overrides?: Record<string, unknown>) {
   return {
     pinnedIds: new Set<number>(),
     pinnedIssues: [] as ReturnType<typeof createIssue>[],
-    recentlyPinned: [] as ReturnType<typeof createIssue>[],
+
     assignedIds: new Set<number>(),
     assignedIssues: [] as ReturnType<typeof createIssue>[],
     onTogglePin: vi.fn(),
@@ -63,8 +65,14 @@ function makeProps(overrides?: Record<string, unknown>) {
     favoriteIds: new Set<number>(),
     onToggleFavorite: vi.fn(),
     onOpenBookDialog: vi.fn(),
+    onShowMessage: vi.fn(),
     ...overrides,
   };
+}
+
+function enterSearchMode() {
+  const input = screen.getByPlaceholderText(/search|suche/i);
+  fireEvent.focus(input);
 }
 
 describe("SearchPanel", () => {
@@ -79,8 +87,10 @@ describe("SearchPanel", () => {
     expect(screen.getByPlaceholderText(/search|suche/i)).toBeInTheDocument();
   });
 
-  it("renders filter chips", () => {
+  it("shows filter chips only in search mode", () => {
     render(<SearchPanel {...makeProps()} />);
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+    enterSearchMode();
     expect(screen.getByRole("toolbar")).toBeInTheDocument();
   });
 
@@ -91,34 +101,30 @@ describe("SearchPanel", () => {
     expect(mockSetParam).toHaveBeenCalledWith("q", "test query");
   });
 
-  it("shows clear button when search has text", () => {
+  it("first Escape clears text but stays in search mode", () => {
     searchOverrides = { params: { q: "hello" } };
     render(<SearchPanel {...makeProps()} />);
-    expect(screen.getByLabelText(/clear.*search|suche.*löschen/i)).toBeInTheDocument();
-  });
-
-  it("clicking clear button resets search text", () => {
-    searchOverrides = { params: { q: "hello" } };
-    render(<SearchPanel {...makeProps()} />);
-    fireEvent.click(screen.getByLabelText(/clear.*search|suche.*löschen/i));
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(mockSetParam).toHaveBeenCalledWith("q", "");
   });
 
-  it("Escape key clears search text when present", () => {
-    searchOverrides = { params: { q: "hello" } };
-    render(<SearchPanel {...makeProps()} />);
-    const input = screen.getByPlaceholderText(/search|suche/i);
-    fireEvent.keyDown(input, { key: "Escape" });
-    expect(mockSetParam).toHaveBeenCalledWith("q", "");
-  });
-
-  it("Escape key blurs input when search text is empty", () => {
+  it("Escape exits search mode when nothing to clear", () => {
     searchOverrides = { params: {} };
     render(<SearchPanel {...makeProps()} />);
-    const input = screen.getByPlaceholderText(/search|suche/i) as HTMLInputElement;
-    input.focus();
-    fireEvent.keyDown(input, { key: "Escape" });
-    expect(document.activeElement).not.toBe(input);
+    enterSearchMode();
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+  });
+
+  it("global Escape works regardless of focus target", () => {
+    searchOverrides = { params: {} };
+    render(<SearchPanel {...makeProps()} />);
+    enterSearchMode();
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+    // Fire on document body, not on input
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
   });
 
   it("shows error message with retry button", () => {
@@ -131,8 +137,8 @@ describe("SearchPanel", () => {
     expect(mockRetry).toHaveBeenCalled();
   });
 
-  it("shows loading skeletons when loading with no results", () => {
-    searchOverrides = { loading: true, results: [] };
+  it("shows loading skeletons when loading in search mode", () => {
+    searchOverrides = { loading: true, results: [], params: { q: "test" } };
     const { container } = render(<SearchPanel {...makeProps()} />);
     expect(container.querySelectorAll(".search-result-skeleton").length).toBe(5);
   });
@@ -182,9 +188,11 @@ describe("SearchPanel", () => {
     expect(screen.getByText(/loading.*more|lade.*weitere/i)).toBeInTheDocument();
   });
 
-  it("shows recent searches when no criteria and no results", () => {
+  it("shows recent searches in search mode when no criteria", () => {
     searchOverrides = { recentSearches: ["old query", "another search"] };
     render(<SearchPanel {...makeProps()} />);
+    expect(screen.queryByText("old query")).not.toBeInTheDocument();
+    enterSearchMode();
     expect(screen.getByText("old query")).toBeInTheDocument();
     expect(screen.getByText("another search")).toBeInTheDocument();
   });
@@ -192,19 +200,21 @@ describe("SearchPanel", () => {
   it("clicking recent search applies it", () => {
     searchOverrides = { recentSearches: ["old query"] };
     render(<SearchPanel {...makeProps()} />);
+    enterSearchMode();
     fireEvent.click(screen.getByText("old query"));
     expect(mockApplyRecentSearch).toHaveBeenCalledWith("old query");
   });
 
-  it("shows clear recent searches button", () => {
+  it("shows clear recent searches button in search mode", () => {
     searchOverrides = { recentSearches: ["old query"] };
     render(<SearchPanel {...makeProps()} />);
+    enterSearchMode();
     const clearBtn = screen.getByLabelText(/clear.*search.*history|suchverlauf.*leeren/i);
     fireEvent.click(clearBtn);
     expect(mockClearRecent).toHaveBeenCalled();
   });
 
-  it("shows empty state when nothing available", () => {
+  it("shows empty state in browse mode when nothing available", () => {
     const { container } = render(<SearchPanel {...makeProps()} />);
     expect(container.querySelector(".search-panel__empty")).toBeInTheDocument();
   });
@@ -243,7 +253,7 @@ describe("SearchPanel", () => {
     expect(onFetchVersions).not.toHaveBeenCalled();
   });
 
-  it("shows pinned issues in PinnedPreview", () => {
+  it("shows pinned issues in browse mode", () => {
     const pinnedIssue = createIssue({ id: 50, subject: "Pinned Bug" });
     render(
       <SearchPanel
@@ -256,17 +266,77 @@ describe("SearchPanel", () => {
     expect(screen.getByText("Pinned Bug")).toBeInTheDocument();
   });
 
-  it("Cmd+K focuses search input", () => {
+  it("Cmd+K focuses search input and activates search mode", () => {
     render(<SearchPanel {...makeProps()} />);
     const input = screen.getByPlaceholderText(/search|suche/i);
     fireEvent.keyDown(window, { key: "k", metaKey: true });
     expect(document.activeElement).toBe(input);
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
   });
 
-  it("Ctrl+K focuses search input", () => {
+  it("Ctrl+K focuses search input and activates search mode", () => {
     render(<SearchPanel {...makeProps()} />);
     const input = screen.getByPlaceholderText(/search|suche/i);
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     expect(document.activeElement).toBe(input);
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+  });
+
+  it("no back button in search mode", () => {
+    render(<SearchPanel {...makeProps()} />);
+    enterSearchMode();
+    expect(screen.queryByLabelText(/close.*search|suche.*schließen/i)).not.toBeInTheDocument();
+  });
+
+  it("browse mode shows collections, not filters", () => {
+    const pinnedIssue = createIssue({ id: 50, subject: "My Task" });
+    render(
+      <SearchPanel
+        {...makeProps({
+          pinnedIds: new Set([50]),
+          pinnedIssues: [pinnedIssue],
+        })}
+      />,
+    );
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+    expect(screen.getByText("My Task")).toBeInTheDocument();
+  });
+
+  it("pin toggle on search result calls onShowMessage", () => {
+    const issue = createIssue({ id: 42, subject: "Test Issue" });
+    searchOverrides = { params: { q: "test" }, results: [issue], totalCount: 1 };
+    const props = makeProps();
+    render(<SearchPanel {...props} />);
+    fireEvent.click(screen.getByLabelText(/pin issue|anpinnen/i));
+    expect(props.onShowMessage).toHaveBeenCalled();
+  });
+
+  it("favorite toggle on search result calls onShowMessage", () => {
+    const issue = createIssue({ id: 42, subject: "Test Issue" });
+    searchOverrides = { params: { q: "test" }, results: [issue], totalCount: 1 };
+    const props = makeProps();
+    render(<SearchPanel {...props} />);
+    fireEvent.click(screen.getByLabelText(/favorit/i));
+    expect(props.onShowMessage).toHaveBeenCalled();
+  });
+
+  it("shows Esc kbd hint in search mode", () => {
+    render(<SearchPanel {...makeProps()} />);
+    enterSearchMode();
+    expect(screen.getByText("Esc")).toBeInTheDocument();
+  });
+
+  it("shows keyboard shortcut hint in browse mode", () => {
+    render(<SearchPanel {...makeProps()} />);
+    expect(screen.getByText("K")).toBeInTheDocument();
+  });
+
+  it("per-item remove button calls removeRecentSearch", () => {
+    searchOverrides = { recentSearches: ["old query", "another"] };
+    render(<SearchPanel {...makeProps()} />);
+    enterSearchMode();
+    const removeBtns = screen.getAllByLabelText(/remove|entfernen/i);
+    fireEvent.click(removeBtns[0]);
+    expect(mockRemoveRecentSearch).toHaveBeenCalledWith("old query");
   });
 });

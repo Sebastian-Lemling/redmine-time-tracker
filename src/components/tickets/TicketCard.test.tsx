@@ -125,4 +125,28 @@ describe("TicketCard", () => {
     fireEvent.click(screen.getByLabelText(/manuell buchen|book manually/i));
     expect(onOpenBookDialog).toHaveBeenCalledTimes(1);
   });
+
+  it("applies ticket-card--accented class when projectColor is set", () => {
+    const { container } = render(<TicketCard {...baseProps} projectColor="#4285f4" />);
+    const card = container.querySelector(".ticket-card");
+    expect(card?.className).toContain("ticket-card--accented");
+    expect(card?.className).not.toContain("ticket-card--favorite");
+  });
+
+  it("applies ticket-card--favorite class when isFavoriteCard is true", () => {
+    const { container } = render(
+      <TicketCard {...baseProps} projectColor="#4285f4" isFavoriteCard />,
+    );
+    const card = container.querySelector(".ticket-card");
+    expect(card?.className).toContain("ticket-card--favorite");
+    expect(card?.className).not.toContain("ticket-card--accented");
+  });
+
+  it("does not set --project-color CSS variable when isFavoriteCard is true", () => {
+    const { container } = render(
+      <TicketCard {...baseProps} projectColor="#4285f4" isFavoriteCard />,
+    );
+    const card = container.querySelector(".ticket-card") as HTMLElement;
+    expect(card.style.getPropertyValue("--project-color")).toBe("");
+  });
 });

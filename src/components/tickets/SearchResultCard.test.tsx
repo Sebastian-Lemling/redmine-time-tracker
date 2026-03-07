@@ -38,28 +38,60 @@ describe("SearchResultCard", () => {
     expect(screen.getByText("New")).toBeInTheDocument();
   });
 
-  it("links to Redmine issue", () => {
+  it("card is a clickable div with role=button", () => {
     render(<SearchResultCard {...defaultProps} />);
-    const link = screen.getByRole("link");
+    const card = document.querySelector(".search-result-card")!;
+    expect(card.tagName).toBe("DIV");
+    expect(card.getAttribute("role")).toBe("button");
+    expect(card.getAttribute("tabindex")).toBe("0");
+  });
+
+  it("clicking card calls onBookTime", () => {
+    const onBookTime = vi.fn();
+    render(<SearchResultCard {...defaultProps} onBookTime={onBookTime} />);
+    const card = document.querySelector(".search-result-card")!;
+    fireEvent.click(card);
+    expect(onBookTime).toHaveBeenCalledWith(defaultProps.issue);
+  });
+
+  it("Enter key on card calls onBookTime", () => {
+    const onBookTime = vi.fn();
+    render(<SearchResultCard {...defaultProps} onBookTime={onBookTime} />);
+    const card = document.querySelector(".search-result-card")!;
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(onBookTime).toHaveBeenCalledWith(defaultProps.issue);
+  });
+
+  it("Space key on card calls onBookTime", () => {
+    const onBookTime = vi.fn();
+    render(<SearchResultCard {...defaultProps} onBookTime={onBookTime} />);
+    const card = document.querySelector(".search-result-card")!;
+    fireEvent.keyDown(card, { key: " " });
+    expect(onBookTime).toHaveBeenCalledWith(defaultProps.issue);
+  });
+
+  it("renders ExternalLink to Redmine", () => {
+    render(<SearchResultCard {...defaultProps} />);
+    const link = screen.getByLabelText(/redmine/i);
     expect(link).toHaveAttribute("href", "http://redmine.example.com/issues/42");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("checkbox toggles pin", () => {
+  it("pin button toggles pin", () => {
     const onTogglePin = vi.fn();
     render(<SearchResultCard {...defaultProps} onTogglePin={onTogglePin} />);
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByLabelText(/pin issue|anpinnen/i));
     expect(onTogglePin).toHaveBeenCalledWith(defaultProps.issue);
   });
 
-  it("checkbox checked when isPinned=true", () => {
+  it("pin button shows pressed state when isPinned=true", () => {
     render(<SearchResultCard {...defaultProps} isPinned={true} />);
-    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(screen.getByLabelText(/unpin|loslösen/i)).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("checkbox NOT disabled when isAssigned=true (can unpin assigned)", () => {
+  it("pin button not disabled when isAssigned=true", () => {
     render(<SearchResultCard {...defaultProps} isAssigned={true} />);
-    expect(screen.getByRole("checkbox")).not.toBeDisabled();
+    expect(screen.getByLabelText(/pin issue|anpinnen/i)).not.toBeDisabled();
   });
 
   it("highlights search query in subject", () => {
@@ -89,22 +121,16 @@ describe("SearchResultCard", () => {
     expect(container.querySelector(".search-result-card--pinned")).toBeInTheDocument();
   });
 
-  it("renders book button when onBookTime is provided", () => {
-    const onBookTime = vi.fn();
-    render(<SearchResultCard {...defaultProps} onBookTime={onBookTime} />);
-    expect(screen.getByLabelText(/manuell buchen|book manually/i)).toBeInTheDocument();
-  });
-
-  it("does not render book button when onBookTime is undefined", () => {
+  it("renders tracker name in meta line", () => {
     render(<SearchResultCard {...defaultProps} />);
-    expect(screen.queryByLabelText(/manuell buchen|book manually/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Bug")).toBeInTheDocument();
   });
 
-  it("clicking book button calls onBookTime with issue", () => {
-    const onBookTime = vi.fn();
-    render(<SearchResultCard {...defaultProps} onBookTime={onBookTime} />);
-    fireEvent.click(screen.getByLabelText(/manuell buchen|book manually/i));
-    expect(onBookTime).toHaveBeenCalledWith(defaultProps.issue);
+  it("renders time ago for updated_on", () => {
+    render(<SearchResultCard {...defaultProps} />);
+    const metaLine = document.querySelector(".search-result-card__meta")!;
+    const timeAgo = metaLine.querySelector(".search-result-card__time-ago");
+    expect(timeAgo).toBeInTheDocument();
   });
 
   it("click star calls onToggleFavorite", () => {
@@ -129,5 +155,39 @@ describe("SearchResultCard", () => {
     render(<SearchResultCard {...defaultProps} searchQuery="zzzzz" />);
     expect(document.querySelector("mark")).not.toBeInTheDocument();
     expect(screen.getByText("Fix login bug")).toBeInTheDocument();
+  });
+
+  it("hides project name when hideProjectName=true", () => {
+    render(<SearchResultCard {...defaultProps} hideProjectName />);
+    expect(screen.queryByText("WebApp")).not.toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
+  });
+
+  it("hides assigned hint when hideAssignedHint=true", () => {
+    render(<SearchResultCard {...defaultProps} isAssigned={true} hideAssignedHint />);
+    expect(screen.queryByText(/dir zugewiesen|assigned to you/i)).not.toBeInTheDocument();
+  });
+
+  it("shows 'just now' when updated_on is moments ago", () => {
+    const issue = makeIssue({ updated_on: new Date().toISOString() });
+    render(<SearchResultCard {...defaultProps} issue={issue} />);
+    expect(screen.getByText(/gerade eben|just now/i)).toBeInTheDocument();
+  });
+
+  it("hides pin button when hidePinButton is true", () => {
+    render(<SearchResultCard {...defaultProps} hidePinButton />);
+    expect(screen.queryByLabelText(/pin|anpinnen|loslösen/i)).not.toBeInTheDocument();
+  });
+
+  it("adds no-pin class when hidePinButton is true", () => {
+    render(<SearchResultCard {...defaultProps} hidePinButton />);
+    const card = document.querySelector(".search-result-card");
+    expect(card?.className).toContain("search-result-card--no-pin");
+  });
+
+  it("shows pin button by default", () => {
+    render(<SearchResultCard {...defaultProps} />);
+    const card = document.querySelector(".search-result-card");
+    expect(card?.className).not.toContain("search-result-card--no-pin");
   });
 });

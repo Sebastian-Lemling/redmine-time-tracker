@@ -44,8 +44,7 @@ interface Props {
   projectColor?: string;
   isPinned?: boolean;
   onTogglePin?: (issue: RedmineIssue) => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: (issue: RedmineIssue) => void;
+  isFavoriteCard?: boolean;
 }
 
 export const TicketCard = React.memo(function TicketCard({
@@ -79,8 +78,7 @@ export const TicketCard = React.memo(function TicketCard({
   projectColor,
   isPinned,
   onTogglePin,
-  isFavorite,
-  onToggleFavorite,
+  isFavoriteCard,
 }: Props) {
   useEffect(() => {
     onFetchVersions(issue.project.id);
@@ -89,8 +87,10 @@ export const TicketCard = React.memo(function TicketCard({
 
   return (
     <div
-      className={`md-card-interactive ticket-card${projectColor ? " ticket-card--accented" : ""}${timerStatus === "running" ? " ticket-card--running" : timerStatus === "paused" ? " ticket-card--paused" : ""}`}
-      style={{ "--project-color": projectColor } as React.CSSProperties}
+      className={`md-card-interactive ticket-card${isFavoriteCard ? " ticket-card--favorite" : projectColor ? " ticket-card--accented" : ""}${timerStatus === "running" ? " ticket-card--running" : timerStatus === "paused" ? " ticket-card--paused" : ""}`}
+      style={
+        { "--project-color": isFavoriteCard ? undefined : projectColor } as React.CSSProperties
+      }
     >
       <TicketCardHeader
         issue={issue}
@@ -110,8 +110,6 @@ export const TicketCard = React.memo(function TicketCard({
         projectColor={projectColor}
         isPinned={isPinned}
         onTogglePin={onTogglePin}
-        isFavorite={isFavorite}
-        onToggleFavorite={onToggleFavorite}
       />
 
       <TicketCardDescription

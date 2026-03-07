@@ -16,9 +16,6 @@ const PROJECT_COLORS = [
   "#ef6c00",
 ];
 
-const FAVORITES_GROUP_KEY = "__favorites__";
-const FAVORITES_COLOR = "#f9ab00";
-
 function buildProjectColorMap(names: string[]): Record<string, string> {
   const sorted = [...names].sort();
   const map: Record<string, string> = {};
@@ -28,7 +25,7 @@ function buildProjectColorMap(names: string[]): Record<string, string> {
   return map;
 }
 
-export { PROJECT_COLORS, FAVORITES_GROUP_KEY };
+export { PROJECT_COLORS };
 
 interface UseTicketGroupingOpts {
   issues: RedmineIssue[];
@@ -58,18 +55,20 @@ export function useTicketGrouping({
       return acc;
     }, {});
     const allProjectNames = Object.keys(baseGrouped).sort();
-    const colorMap: Record<string, string> = {
-      ...buildProjectColorMap(allProjectNames),
-      [FAVORITES_GROUP_KEY]: FAVORITES_COLOR,
-    };
+    const colorMap: Record<string, string> = buildProjectColorMap(allProjectNames);
     return { allProjectNames, colorMap, baseGrouped };
   }, [filteredIssues]);
 
   const grouped = useMemo(() => {
     if (!showFavoritesGroup || !favoriteIds || favoriteIds.size === 0) return baseGrouped;
     const favIssues = filteredIssues.filter((i) => favoriteIds.has(i.id));
-    if (favIssues.length === 0) return baseGrouped;
-    return { ...baseGrouped, [FAVORITES_GROUP_KEY]: favIssues };
+    if (favIssues.length === 0) return {};
+    return favIssues.reduce<Record<string, RedmineIssue[]>>((acc, issue) => {
+      const key = issue.project.name;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(issue);
+      return acc;
+    }, {});
   }, [baseGrouped, filteredIssues, showFavoritesGroup, favoriteIds]);
 
   return { grouped, allProjectNames, colorMap };

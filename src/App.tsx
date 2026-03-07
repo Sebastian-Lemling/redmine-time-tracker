@@ -330,7 +330,6 @@ export default function App() {
           issues={redmine.issues}
           pinnedIds={pinned.pinnedIds}
           pinnedIssues={pinned.pinnedIssues}
-          recentlyPinned={pinned.recentlyPinned}
           onTogglePin={handleTogglePin}
           onToggleAssignedPin={handleToggleAssignedPin}
           favoriteIds={favorites.favoriteIds}
@@ -363,8 +362,6 @@ export default function App() {
           onFetchMembers={redmine.fetchProjectMembers}
           onFetchVersions={redmine.fetchProjectVersions}
           onFetchIssueDescription={redmine.fetchIssueDescription}
-          onFetchIssues={onRefresh}
-          isRefreshing={isRefreshing}
           fetchIssueSubject={redmine.fetchIssueSubject}
           fetchRemoteEntries={redmine.fetchRemoteEntries}
           refreshRemoteEntries={redmine.refreshRemoteEntries}

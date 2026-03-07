@@ -281,46 +281,6 @@ describe("TicketCardHeader", () => {
     expect(onDoneRatioChange).toHaveBeenCalledWith(42, 50);
   });
 
-  it("star button always renders SVG ring", () => {
-    const { container } = render(
-      <TicketCardHeader {...makeProps({ onToggleFavorite: vi.fn(), isFavorite: false })} />,
-    );
-    expect(container.querySelector(".card-header__star-ring")).toBeInTheDocument();
-  });
-
-  it("star button ring present for both favorite states", () => {
-    const { container: c1 } = render(
-      <TicketCardHeader {...makeProps({ onToggleFavorite: vi.fn(), isFavorite: true })} />,
-    );
-    const { container: c2 } = render(
-      <TicketCardHeader {...makeProps({ onToggleFavorite: vi.fn(), isFavorite: false })} />,
-    );
-    expect(c1.querySelector(".card-header__star-ring")).toBeInTheDocument();
-    expect(c2.querySelector(".card-header__star-ring")).toBeInTheDocument();
-  });
-
-  it("clicking star button calls onToggleFavorite", () => {
-    const onToggleFavorite = vi.fn();
-    render(<TicketCardHeader {...makeProps({ onToggleFavorite, isFavorite: false })} />);
-    const starBtn = screen.getByLabelText(/favorit/i);
-    fireEvent.click(starBtn);
-    expect(onToggleFavorite).toHaveBeenCalledWith(makeIssue());
-  });
-
-  it("star button has filled class when isFavorite=true", () => {
-    const { container } = render(
-      <TicketCardHeader {...makeProps({ onToggleFavorite: vi.fn(), isFavorite: true })} />,
-    );
-    expect(container.querySelector(".card-header__star-btn--filled")).toBeInTheDocument();
-  });
-
-  it("star button has ghost class when isFavorite=false", () => {
-    const { container } = render(
-      <TicketCardHeader {...makeProps({ onToggleFavorite: vi.fn(), isFavorite: false })} />,
-    );
-    expect(container.querySelector(".card-header__star-btn--ghost")).toBeInTheDocument();
-  });
-
   it("selecting an assignee calls onAssigneeChange via ChipMenu", () => {
     const onAssigneeChange = vi.fn();
     const onFetchMembers = vi.fn();
@@ -354,13 +314,6 @@ describe("TicketCardHeader", () => {
     expect(screen.getAllByText("New").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("In Progress")).toBeInTheDocument();
     expect(screen.getByText("Resolved")).toBeInTheDocument();
-  });
-
-  it("star button hidden when onToggleFavorite undefined", () => {
-    const { container } = render(
-      <TicketCardHeader {...makeProps({ onToggleFavorite: undefined })} />,
-    );
-    expect(container.querySelector(".card-header__star-btn")).not.toBeInTheDocument();
   });
 
   it("assignee dropdown is searchable", () => {

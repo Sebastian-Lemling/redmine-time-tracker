@@ -1,5 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Search } from "lucide-react";
+import { useDropdown } from "../../hooks/useDropdown";
+import { useI18n } from "../../i18n/I18nContext";
+
+const SEARCHABLE_THRESHOLD = 6;
 
 interface FilterChipProps<T> {
   label: string;
@@ -7,178 +12,154 @@ interface FilterChipProps<T> {
   options: { label: string; value: T }[];
   onSelect: (value: T) => void;
   ariaLabel?: string;
+  searchable?: boolean;
 }
 
-export function FilterChip<T>({ label, active, options, onSelect, ariaLabel }: FilterChipProps<T>) {
-  const [open, setOpen] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
-  const chipRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const cleanupRef = useRef<() => void>(() => {});
+export function FilterChip<T>({
+  label,
+  active,
+  options,
+  onSelect,
+  ariaLabel,
+  searchable,
+}: FilterChipProps<T>) {
+  const { t } = useI18n();
+  const { open, toggle, close, triggerRef, menuRef, pos } = useDropdown<
+    HTMLButtonElement,
+    HTMLDivElement
+  >();
 
-  useEffect(() => {
-    if (!open) return;
-    const raf = requestAnimationFrame(() => {
-      const handler = (e: MouseEvent) => {
-        const target = e.target as Node;
-        if (
-          chipRef.current &&
-          !chipRef.current.contains(target) &&
-          menuRef.current &&
-          !menuRef.current.contains(target)
-        ) {
-          setOpen(false);
-        }
-      };
-      document.addEventListener("mousedown", handler);
-      cleanupRef.current = () => document.removeEventListener("mousedown", handler);
-    });
-    return () => {
-      cancelAnimationFrame(raf);
-      cleanupRef.current();
-    };
-  }, [open]);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFocusedIndex(0);
-      requestAnimationFrame(() => itemRefs.current[0]?.focus());
-    } else {
-      setFocusedIndex(-1);
-    }
-  }, [open]);
+  const showSearch = searchable !== false && options.length >= SEARCHABLE_THRESHOLD;
 
-  const computeMenuPos = useCallback(() => {
-    if (!chipRef.current) return;
-    const rect = chipRef.current.getBoundingClientRect();
-    const viewportH = window.innerHeight;
-    const menuHeight = Math.min(options.length * 36 + 8, 320);
-    const spaceBelow = viewportH - rect.bottom - 4;
-    const top = spaceBelow >= menuHeight ? rect.bottom + 4 : Math.max(4, rect.top - menuHeight - 4);
-    const left = Math.min(rect.left, window.innerWidth - 300);
-    setMenuPos({ top, left });
-  }, [options.length]);
-
-  const handleOpen = useCallback(() => {
-    if (!open) computeMenuPos();
-    setOpen((prev) => !prev);
-  }, [open, computeMenuPos]);
+  const filtered = useMemo(() => {
+    if (!showSearch || !query.trim()) return options;
+    const lower = query.toLowerCase();
+    return options.filter((opt) => opt.label.toLowerCase().includes(lower));
+  }, [options, query, showSearch]);
 
   const selectAndClose = useCallback(
     (value: T) => {
       onSelect(value);
-      setOpen(false);
+      close();
       triggerRef.current?.focus();
     },
-    [onSelect],
+    [onSelect, close, triggerRef],
   );
 
-  const handleTriggerKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHighlightIndex(-1);
+      setQuery("");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open && showSearch) {
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }
+  }, [open, showSearch]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHighlightIndex(-1);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
-        if (!open) {
-          computeMenuPos();
-          setOpen(true);
+        if (filtered.length === 0) return;
+        setHighlightIndex((prev) => (prev + 1) % filtered.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (filtered.length === 0) return;
+        setHighlightIndex((prev) => (prev <= 0 ? filtered.length - 1 : prev - 1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (highlightIndex >= 0 && highlightIndex < filtered.length) {
+          selectAndClose(filtered[highlightIndex].value);
         }
-      } else if (e.key === "Escape" && open) {
-        e.preventDefault();
-        setOpen(false);
       }
-    },
-    [open, computeMenuPos],
-  );
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, highlightIndex, filtered, selectAndClose]);
 
-  const handleMenuKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault();
-          setFocusedIndex((prev) => {
-            const next = prev < options.length - 1 ? prev + 1 : 0;
-            itemRefs.current[next]?.focus();
-            return next;
-          });
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          setFocusedIndex((prev) => {
-            const next = prev > 0 ? prev - 1 : options.length - 1;
-            itemRefs.current[next]?.focus();
-            return next;
-          });
-          break;
-        case "Home":
-          e.preventDefault();
-          setFocusedIndex(0);
-          itemRefs.current[0]?.focus();
-          break;
-        case "End":
-          e.preventDefault();
-          setFocusedIndex(options.length - 1);
-          itemRefs.current[options.length - 1]?.focus();
-          break;
-        case "Escape":
-          e.preventDefault();
-          setOpen(false);
-          triggerRef.current?.focus();
-          break;
-        case "Tab":
-          setOpen(false);
-          break;
-      }
-    },
-    [options.length],
-  );
+  useEffect(() => {
+    if (highlightIndex < 0 || !menuRef.current) return;
+    const el = menuRef.current.querySelector(`[data-index="${highlightIndex}"]`);
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }, [highlightIndex, menuRef]);
 
   const menuId = `filter-menu-${ariaLabel?.replace(/\s+/g, "-") || label.replace(/\s+/g, "-")}`;
 
   return (
-    <div ref={chipRef} style={{ position: "relative", minWidth: 0 }}>
+    <>
       <button
         ref={triggerRef}
-        className={`search-chip${active ? " search-chip--active" : ""}`}
-        onClick={handleOpen}
-        onKeyDown={handleTriggerKeyDown}
+        className={`filter-chip${active ? " filter-chip--active" : ""}`}
+        onClick={toggle}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={ariaLabel || label}
       >
-        <span className="search-chip__label">{label}</span>
-        <ChevronDown size={12} className={open ? "search-chip__caret--open" : ""} />
+        <span className="filter-chip__label">{label}</span>
+        <ChevronDown size={12} className={open ? "filter-chip__caret--open" : ""} />
       </button>
-      {open && (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="listbox"
-          aria-label={ariaLabel || label}
-          className="search-chip__menu"
-          style={{ top: menuPos.top, left: menuPos.left }}
-          onKeyDown={handleMenuKeyDown}
-        >
-          {options.map((opt, i) => (
-            <button
-              key={i}
-              ref={(el) => {
-                itemRefs.current[i] = el;
-              }}
-              role="option"
-              aria-selected={focusedIndex === i}
-              className={`search-chip__menu-item${focusedIndex === i ? " search-chip__menu-item--focused" : ""}`}
-              onClick={() => selectAndClose(opt.value)}
-              tabIndex={focusedIndex === i ? 0 : -1}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            id={menuId}
+            className="chip-menu__list md-elevation-2"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            {showSearch && (
+              <div className="chip-menu__search">
+                <Search size={14} className="chip-menu__search-icon" aria-hidden="true" />
+                <input
+                  ref={searchRef}
+                  type="text"
+                  className="chip-menu__search-input"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t.filterSearchPlaceholder}
+                  aria-label={t.filterSearchPlaceholder}
+                />
+              </div>
+            )}
+            <ul role="listbox" aria-label={ariaLabel || label} className="chip-menu__items">
+              {filtered.map((opt, i) => {
+                const highlighted = i === highlightIndex;
+                return (
+                  <li
+                    key={i}
+                    role="option"
+                    aria-selected={highlighted}
+                    onClick={() => selectAndClose(opt.value)}
+                    className="chip-menu__item"
+                    data-highlighted={highlighted || undefined}
+                    data-index={i}
+                  >
+                    {opt.label}
+                  </li>
+                );
+              })}
+              {filtered.length === 0 && (
+                <li className="chip-menu__no-results">{t.noFilterResults}</li>
+              )}
+            </ul>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

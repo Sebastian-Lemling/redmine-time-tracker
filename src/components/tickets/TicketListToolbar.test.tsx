@@ -15,10 +15,8 @@ function makeProps(overrides?: Record<string, unknown>) {
     onToggleTrackedOnly: vi.fn(),
     allExpanded: true,
     onToggleAll: vi.fn(),
-    onRefresh: vi.fn(),
     showFavoritesOnly: false,
     onToggleFavoritesOnly: vi.fn(),
-    favoriteCount: 0,
     ...overrides,
   };
 }
@@ -41,29 +39,34 @@ describe("TicketListToolbar", () => {
     expect(onSearchChange).toHaveBeenCalledWith("bug");
   });
 
-  it("shows clear button when searchQuery is non-empty", () => {
+  it("shows Esc kbd when searchQuery is non-empty", () => {
     render(<TicketListToolbar {...makeProps({ searchQuery: "foo" })} />);
-    const clearBtn = screen.getByTitle("Clear");
-    expect(clearBtn).toBeInTheDocument();
+    expect(screen.getByText("Esc")).toBeInTheDocument();
   });
 
-  it("hides clear button when searchQuery is empty", () => {
+  it("shows shortcut hint when searchQuery is empty", () => {
     render(<TicketListToolbar {...makeProps({ searchQuery: "" })} />);
-    expect(screen.queryByTitle("Clear")).not.toBeInTheDocument();
+    expect(screen.getByText("O")).toBeInTheDocument();
   });
 
-  it("clear button resets search", () => {
+  it("Esc kbd clears search on click", () => {
     const onSearchChange = vi.fn();
     render(<TicketListToolbar {...makeProps({ searchQuery: "foo", onSearchChange })} />);
-    fireEvent.click(screen.getByTitle("Clear"));
+    fireEvent.mouseDown(screen.getByText("Esc"));
     expect(onSearchChange).toHaveBeenCalledWith("");
   });
 
-  it("refresh button calls onRefresh", () => {
-    const onRefresh = vi.fn();
-    render(<TicketListToolbar {...makeProps({ onRefresh })} />);
-    fireEvent.click(screen.getByTitle(/aktualisieren|refresh/i));
-    expect(onRefresh).toHaveBeenCalled();
+  it("star button calls onToggleFavoritesOnly", () => {
+    const onToggleFavoritesOnly = vi.fn();
+    render(<TicketListToolbar {...makeProps({ onToggleFavoritesOnly })} />);
+    fireEvent.click(screen.getByTitle(/favorit|favorites/i));
+    expect(onToggleFavoritesOnly).toHaveBeenCalled();
+  });
+
+  it("star button is highlighted when showFavoritesOnly is true", () => {
+    render(<TicketListToolbar {...makeProps({ showFavoritesOnly: true })} />);
+    const btn = screen.getByTitle(/favorit|favorites/i);
+    expect(btn.style.color).toBe("var(--color-star, #f9ab00)");
   });
 
   it("tracked-only button calls onToggleTrackedOnly", () => {
@@ -141,8 +144,8 @@ describe("TicketListToolbar", () => {
       const alphaBtn = screen.getByText("Alpha").closest("button")!;
       const betaBtn = screen.getByText("Beta").closest("button")!;
 
-      expect(alphaBtn.className).toContain("project-filter-badge--active");
-      expect(betaBtn.className).not.toContain("project-filter-badge--active");
+      expect(alphaBtn.className).toContain("filter-chip--active");
+      expect(betaBtn.className).not.toContain("filter-chip--active");
     });
 
     it("'All' badge calls onToggleAllProjects", () => {
@@ -171,37 +174,58 @@ describe("TicketListToolbar", () => {
     });
   });
 
-  describe("favorites group badge", () => {
-    const twoProjects = {
-      filterProjects: [
+  describe("favorites mode", () => {
+    it("shows fav-header instead of filter chips when showFavoritesOnly is true", () => {
+      const filterProjects = [
         { name: "Alpha", count: 3 },
         { name: "Beta", count: 5 },
-      ],
-      enabledProjects: new Set(["Alpha", "Beta"]),
-      colorMap: { Alpha: "#4285f4", Beta: "#ea4335" },
-      favoriteCount: 2,
-      showFavoritesOnly: true,
-    };
+      ];
+      const enabledProjects = new Set(["Alpha", "Beta"]);
+      const colorMap = { Alpha: "#4285f4", Beta: "#ea4335" };
 
-    it("project badges always call onToggleProject regardless of favorites state", () => {
-      const onToggleProject = vi.fn();
-      render(<TicketListToolbar {...makeProps({ ...twoProjects, onToggleProject })} />);
-      fireEvent.click(screen.getByText("Beta"));
-      expect(onToggleProject).toHaveBeenCalledWith("Beta");
+      const { container } = render(
+        <TicketListToolbar
+          {...makeProps({ filterProjects, enabledProjects, colorMap, showFavoritesOnly: true })}
+        />,
+      );
+
+      expect(container.querySelector(".ticket-layout__fav-header")).toBeInTheDocument();
+      expect(container.querySelector(".project-filter-bar")).not.toBeInTheDocument();
     });
 
-    it("'All' badge always calls onToggleAllProjects regardless of favorites state", () => {
-      const onToggleAllProjects = vi.fn();
-      render(<TicketListToolbar {...makeProps({ ...twoProjects, onToggleAllProjects })} />);
-      fireEvent.click(screen.getByText(/^(Alle|All)\b/));
-      expect(onToggleAllProjects).toHaveBeenCalled();
+    it("shows filter chips when showFavoritesOnly is false", () => {
+      const filterProjects = [
+        { name: "Alpha", count: 3 },
+        { name: "Beta", count: 5 },
+      ];
+      const enabledProjects = new Set(["Alpha", "Beta"]);
+      const colorMap = { Alpha: "#4285f4", Beta: "#ea4335" };
+
+      const { container } = render(
+        <TicketListToolbar
+          {...makeProps({ filterProjects, enabledProjects, colorMap, showFavoritesOnly: false })}
+        />,
+      );
+
+      expect(container.querySelector(".project-filter-bar")).toBeInTheDocument();
+      expect(container.querySelector(".ticket-layout__fav-header")).not.toBeInTheDocument();
     });
 
-    it("favorites badge calls onToggleFavoritesOnly", () => {
-      const onToggleFavoritesOnly = vi.fn();
-      render(<TicketListToolbar {...makeProps({ ...twoProjects, onToggleFavoritesOnly })} />);
-      fireEvent.click(screen.getByText(/^(Favoriten|Favorites)\b/));
-      expect(onToggleFavoritesOnly).toHaveBeenCalled();
+    it("fav-header contains favorites label", () => {
+      const filterProjects = [
+        { name: "Alpha", count: 3 },
+        { name: "Beta", count: 5 },
+      ];
+      const enabledProjects = new Set(["Alpha", "Beta"]);
+      const colorMap = { Alpha: "#4285f4", Beta: "#ea4335" };
+
+      render(
+        <TicketListToolbar
+          {...makeProps({ filterProjects, enabledProjects, colorMap, showFavoritesOnly: true })}
+        />,
+      );
+
+      expect(screen.getByText(/favorit/i)).toBeInTheDocument();
     });
   });
 });

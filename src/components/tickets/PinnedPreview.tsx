@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Pin, Star } from "lucide-react";
 import type { RedmineIssue } from "../../types/redmine";
 import { SearchResultCard } from "./SearchResultCard";
@@ -6,7 +6,6 @@ import { useI18n } from "../../i18n/I18nContext";
 
 interface Props {
   pinnedIssues: RedmineIssue[];
-  recentlyPinned: RedmineIssue[];
   assignedIssues: RedmineIssue[];
   pinnedIds: Set<number>;
   assignedIds: Set<number>;
@@ -18,6 +17,8 @@ interface Props {
   onToggleFavorite: (issue: RedmineIssue) => void;
   onOpenBookDialog: (issue: RedmineIssue) => void;
 }
+
+type Tab = "pinned" | "mytickets" | "favorites";
 
 function groupByProject(issues: RedmineIssue[]): [string, RedmineIssue[]][] {
   return Object.entries(
@@ -32,7 +33,6 @@ function groupByProject(issues: RedmineIssue[]): [string, RedmineIssue[]][] {
 
 export function PinnedPreview({
   pinnedIssues,
-  recentlyPinned,
   assignedIssues,
   pinnedIds,
   assignedIds,
@@ -45,157 +45,107 @@ export function PinnedPreview({
   onOpenBookDialog,
 }: Props) {
   const { t } = useI18n();
-  const [pinnedTab, setPinnedTab] = useState<"pinned" | "recent" | "mytickets" | "favorites">(
-    "pinned",
-  );
-  const unpinnedRecent = recentlyPinned.filter((i) => !pinnedIds.has(i.id));
 
-  if (
-    pinnedIssues.length === 0 &&
-    unpinnedRecent.length === 0 &&
-    assignedIssues.length === 0 &&
-    favoriteIssues.length === 0
-  )
-    return null;
+  const visibleTabs = useMemo(() => {
+    const tabs: { key: Tab; label: string; count: number; icon?: typeof Star }[] = [];
+    if (assignedIssues.length > 0)
+      tabs.push({ key: "mytickets", label: t.myTickets, count: assignedIssues.length });
+    if (pinnedIssues.length > 0)
+      tabs.push({ key: "pinned", label: t.pinnedTickets, count: pinnedIssues.length });
+    if (favoriteIssues.length > 0)
+      tabs.push({ key: "favorites", label: t.favorites, count: favoriteIssues.length, icon: Star });
+    return tabs;
+  }, [assignedIssues.length, pinnedIssues.length, favoriteIssues.length, t]);
+
+  const defaultTab = visibleTabs[0]?.key ?? "mytickets";
+  const [pinnedTab, setPinnedTab] = useState<Tab>(defaultTab);
+  const activeTab = visibleTabs.some((tab) => tab.key === pinnedTab) ? pinnedTab : defaultTab;
+
+  if (visibleTabs.length === 0) return null;
 
   return (
     <div className="search-panel__pinned-preview">
       <div className="search-panel__pinned-preview-header">
         <Pin size={14} />
-        <button
-          className={`search-panel__pinned-tab${pinnedTab === "pinned" ? " search-panel__pinned-tab--active" : ""}`}
-          onClick={() => setPinnedTab("pinned")}
-        >
-          {t.pinnedTickets}
-          {pinnedIssues.length > 0 && (
-            <span className="search-panel__pinned-preview-count">{pinnedIssues.length}</span>
-          )}
-        </button>
-        <button
-          className={`search-panel__pinned-tab${pinnedTab === "recent" ? " search-panel__pinned-tab--active" : ""}`}
-          onClick={() => setPinnedTab("recent")}
-        >
-          {t.recentlyPinned}
-          {unpinnedRecent.length > 0 && (
-            <span className="search-panel__pinned-preview-count">{unpinnedRecent.length}</span>
-          )}
-        </button>
-        <button
-          className={`search-panel__pinned-tab${pinnedTab === "mytickets" ? " search-panel__pinned-tab--active" : ""}`}
-          onClick={() => setPinnedTab("mytickets")}
-        >
-          {t.myTickets}
-          {assignedIssues.length > 0 && (
-            <span className="search-panel__pinned-preview-count">{assignedIssues.length}</span>
-          )}
-        </button>
-        <button
-          className={`search-panel__pinned-tab${pinnedTab === "favorites" ? " search-panel__pinned-tab--active" : ""}`}
-          onClick={() => setPinnedTab("favorites")}
-        >
-          <Star size={12} />
-          {t.favorites}
-          {favoriteIssues.length > 0 && (
-            <span className="search-panel__pinned-preview-count">{favoriteIssues.length}</span>
-          )}
-        </button>
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.key}
+            className={`search-panel__pinned-tab${activeTab === tab.key ? " search-panel__pinned-tab--active" : ""}`}
+            onClick={() => setPinnedTab(tab.key)}
+          >
+            {tab.icon && <tab.icon size={12} />}
+            {tab.label}
+            <span className="search-panel__pinned-preview-count">{tab.count}</span>
+          </button>
+        ))}
       </div>
 
-      {pinnedTab === "pinned" &&
-        pinnedIssues.length > 0 &&
-        groupByProject(pinnedIssues).map(([projectName, issues]) => (
-          <div key={projectName} className="search-panel__pinned-group">
-            <div className="search-panel__pinned-group-name">{projectName}</div>
-            {issues.map((issue) => (
-              <SearchResultCard
-                key={issue.id}
-                issue={issue}
-                isPinned={true}
-                isAssigned={assignedIds.has(issue.id)}
-                redmineUrl={redmineUrl}
-                onTogglePin={onTogglePin}
-                isFavorite={favoriteIds.has(issue.id)}
-                onToggleFavorite={onToggleFavorite}
-                onBookTime={onOpenBookDialog}
-              />
-            ))}
-          </div>
-        ))}
+      <div className="search-panel__pinned-scroll">
+        {activeTab === "pinned" &&
+          groupByProject(pinnedIssues).map(([projectName, issues]) => (
+            <div key={projectName} className="search-panel__pinned-group">
+              <div className="search-panel__pinned-group-name">{projectName}</div>
+              {issues.map((issue) => (
+                <SearchResultCard
+                  key={issue.id}
+                  issue={issue}
+                  isPinned={true}
+                  isAssigned={assignedIds.has(issue.id)}
+                  redmineUrl={redmineUrl}
+                  onTogglePin={onTogglePin}
+                  isFavorite={favoriteIds.has(issue.id)}
+                  onToggleFavorite={onToggleFavorite}
+                  onBookTime={onOpenBookDialog}
+                  hideProjectName
+                />
+              ))}
+            </div>
+          ))}
 
-      {pinnedTab === "pinned" && pinnedIssues.length === 0 && (
-        <div className="search-panel__empty" style={{ padding: "24px 16px" }}>
-          <p>{t.noSearchResults}</p>
-        </div>
-      )}
+        {activeTab === "mytickets" &&
+          groupByProject(assignedIssues).map(([projectName, issues]) => (
+            <div key={projectName} className="search-panel__pinned-group">
+              <div className="search-panel__pinned-group-name">{projectName}</div>
+              {issues.map((issue) => (
+                <SearchResultCard
+                  key={issue.id}
+                  issue={issue}
+                  isPinned={pinnedIds.has(issue.id)}
+                  isAssigned={true}
+                  redmineUrl={redmineUrl}
+                  onTogglePin={onToggleAssignedPin}
+                  isFavorite={favoriteIds.has(issue.id)}
+                  onToggleFavorite={onToggleFavorite}
+                  onBookTime={onOpenBookDialog}
+                  hideProjectName
+                  hideAssignedHint
+                />
+              ))}
+            </div>
+          ))}
 
-      {pinnedTab === "recent" &&
-        unpinnedRecent.length > 0 &&
-        groupByProject(unpinnedRecent).map(([projectName, issues]) => (
-          <div key={projectName} className="search-panel__pinned-group">
-            <div className="search-panel__pinned-group-name">{projectName}</div>
-            {issues.map((issue) => (
-              <SearchResultCard
-                key={issue.id}
-                issue={issue}
-                isPinned={false}
-                isAssigned={assignedIds.has(issue.id)}
-                redmineUrl={redmineUrl}
-                onTogglePin={onTogglePin}
-                isFavorite={favoriteIds.has(issue.id)}
-                onToggleFavorite={onToggleFavorite}
-                onBookTime={onOpenBookDialog}
-              />
-            ))}
-          </div>
-        ))}
-
-      {pinnedTab === "mytickets" &&
-        assignedIssues.length > 0 &&
-        groupByProject(assignedIssues).map(([projectName, issues]) => (
-          <div key={projectName} className="search-panel__pinned-group">
-            <div className="search-panel__pinned-group-name">{projectName}</div>
-            {issues.map((issue) => (
-              <SearchResultCard
-                key={issue.id}
-                issue={issue}
-                isPinned={pinnedIds.has(issue.id)}
-                isAssigned={true}
-                redmineUrl={redmineUrl}
-                onTogglePin={onToggleAssignedPin}
-                isFavorite={favoriteIds.has(issue.id)}
-                onToggleFavorite={onToggleFavorite}
-                onBookTime={onOpenBookDialog}
-              />
-            ))}
-          </div>
-        ))}
-
-      {pinnedTab === "favorites" &&
-        favoriteIssues.length > 0 &&
-        groupByProject(favoriteIssues).map(([projectName, issues]) => (
-          <div key={projectName} className="search-panel__pinned-group">
-            <div className="search-panel__pinned-group-name">{projectName}</div>
-            {issues.map((issue) => (
-              <SearchResultCard
-                key={issue.id}
-                issue={issue}
-                isPinned={pinnedIds.has(issue.id)}
-                isAssigned={assignedIds.has(issue.id)}
-                redmineUrl={redmineUrl}
-                onTogglePin={onTogglePin}
-                isFavorite={true}
-                onToggleFavorite={onToggleFavorite}
-                onBookTime={onOpenBookDialog}
-              />
-            ))}
-          </div>
-        ))}
-
-      {pinnedTab === "favorites" && favoriteIssues.length === 0 && (
-        <div className="search-panel__empty" style={{ padding: "24px 16px" }}>
-          <p>{t.noFavorites}</p>
-        </div>
-      )}
+        {activeTab === "favorites" &&
+          groupByProject(favoriteIssues).map(([projectName, issues]) => (
+            <div key={projectName} className="search-panel__pinned-group">
+              <div className="search-panel__pinned-group-name">{projectName}</div>
+              {issues.map((issue) => (
+                <SearchResultCard
+                  key={issue.id}
+                  issue={issue}
+                  isPinned={pinnedIds.has(issue.id)}
+                  isAssigned={assignedIds.has(issue.id)}
+                  redmineUrl={redmineUrl}
+                  onTogglePin={onTogglePin}
+                  isFavorite={true}
+                  onToggleFavorite={onToggleFavorite}
+                  onBookTime={onOpenBookDialog}
+                  hideProjectName
+                  hidePinButton
+                />
+              ))}
+            </div>
+          ))}
+      </div>
     </div>
   );
 }

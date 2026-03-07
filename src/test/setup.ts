@@ -32,6 +32,15 @@ Object.defineProperty(globalThis, "localStorage", {
   configurable: true,
 });
 
+// jsdom doesn't implement ResizeObserver
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof globalThis.ResizeObserver;
+}
+
 // jsdom doesn't implement scrollIntoView
 if (typeof Element.prototype.scrollIntoView !== "function") {
   Element.prototype.scrollIntoView = () => {};
