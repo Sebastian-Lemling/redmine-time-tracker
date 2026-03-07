@@ -18,7 +18,7 @@ function makeIssue(id: number, projectName: string): RedmineIssue {
 
 const defaultProps = {
   pinnedIssues: [] as RedmineIssue[],
-  recentlyPinned: [] as RedmineIssue[],
+
   assignedIssues: [] as RedmineIssue[],
   pinnedIds: new Set<number>(),
   assignedIds: new Set<number>(),
@@ -52,46 +52,6 @@ describe("PinnedPreview", () => {
     const issues = [makeIssue(1, "Alpha")];
     render(<PinnedPreview {...defaultProps} pinnedIssues={issues} pinnedIds={new Set([1])} />);
     expect(screen.getByText("1")).toBeInTheDocument();
-  });
-
-  it("switches between pinned and recent tabs", () => {
-    const pinned = [makeIssue(1, "Alpha")];
-    const recent = [makeIssue(2, "Beta")];
-    render(
-      <PinnedPreview
-        {...defaultProps}
-        pinnedIssues={pinned}
-        pinnedIds={new Set([1])}
-        recentlyPinned={recent}
-      />,
-    );
-
-    expect(screen.getByText("#1")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText(/zuletzt|recent/i));
-    expect(screen.getByText("#2")).toBeInTheDocument();
-  });
-
-  it("excludes already-pinned issues from recent tab", () => {
-    const pinned = [makeIssue(1, "Alpha")];
-    const recent = [makeIssue(1, "Alpha"), makeIssue(2, "Beta")];
-    render(
-      <PinnedPreview
-        {...defaultProps}
-        pinnedIssues={pinned}
-        pinnedIds={new Set([1])}
-        recentlyPinned={recent}
-      />,
-    );
-
-    fireEvent.click(screen.getByText(/zuletzt|recent/i));
-    expect(screen.getByText("#2")).toBeInTheDocument();
-  });
-
-  it("shows empty state when pinned tab selected but no pinned issues", () => {
-    const recent = [makeIssue(2, "Beta")];
-    render(<PinnedPreview {...defaultProps} recentlyPinned={recent} />);
-    expect(screen.getByText(/keine issues|no issues/i)).toBeInTheDocument();
   });
 
   it("renders when only assignedIssues are provided", () => {
@@ -132,8 +92,8 @@ describe("PinnedPreview", () => {
     );
 
     fireEvent.click(screen.getByText(/eigene tickets|my tickets/i));
-    const checkbox = screen.getByRole("checkbox");
-    expect(checkbox).toBeChecked();
+    const pinBtn = screen.getByLabelText(/unpin|loslösen/i);
+    expect(pinBtn).toHaveAttribute("aria-pressed", "true");
   });
 
   it("My Tickets tab calls onToggleAssignedPin, not onTogglePin", () => {
@@ -152,14 +112,14 @@ describe("PinnedPreview", () => {
     );
 
     fireEvent.click(screen.getByText(/eigene tickets|my tickets/i));
-    const checkbox = screen.getByRole("checkbox");
-    fireEvent.click(checkbox);
+    const pinBtn = screen.getByLabelText(/unpin|loslösen/i);
+    fireEvent.click(pinBtn);
 
     expect(onToggleAssignedPin).toHaveBeenCalledTimes(1);
     expect(onTogglePin).not.toHaveBeenCalled();
   });
 
-  it("book button calls onOpenBookDialog in pinned tab", () => {
+  it("clicking card calls onOpenBookDialog in pinned tab", () => {
     const onOpenBookDialog = vi.fn();
     const issues = [makeIssue(1, "Alpha")];
     render(
@@ -170,12 +130,12 @@ describe("PinnedPreview", () => {
         onOpenBookDialog={onOpenBookDialog}
       />,
     );
-    const bookBtns = screen.getAllByLabelText(/manuell buchen|book manually/i);
-    fireEvent.click(bookBtns[0]);
+    const card = document.querySelector(".search-result-card")!;
+    fireEvent.click(card);
     expect(onOpenBookDialog).toHaveBeenCalledWith(issues[0]);
   });
 
-  it("book button calls onOpenBookDialog in favorites tab", () => {
+  it("clicking card calls onOpenBookDialog in favorites tab", () => {
     const onOpenBookDialog = vi.fn();
     const favs = [makeIssue(5, "Gamma")];
     render(
@@ -187,8 +147,8 @@ describe("PinnedPreview", () => {
       />,
     );
     fireEvent.click(screen.getByText(/favorit/i));
-    const bookBtns = screen.getAllByLabelText(/manuell buchen|book manually/i);
-    fireEvent.click(bookBtns[0]);
+    const card = document.querySelector(".search-result-card")!;
+    fireEvent.click(card);
     expect(onOpenBookDialog).toHaveBeenCalledWith(favs[0]);
   });
 
@@ -201,7 +161,7 @@ describe("PinnedPreview", () => {
     expect(screen.getByText("#6")).toBeInTheDocument();
   });
 
-  it("empty favorites tab shows empty state message", () => {
+  it("hides favorites tab when no favorites", () => {
     const pinned = [makeIssue(1, "Alpha")];
     render(
       <PinnedPreview
@@ -211,8 +171,7 @@ describe("PinnedPreview", () => {
         favoriteIssues={[]}
       />,
     );
-    fireEvent.click(screen.getByText(/favorit/i));
-    expect(screen.getByText(/keine favoriten|no favorites/i)).toBeInTheDocument();
+    expect(screen.queryByText(/favorit/i)).not.toBeInTheDocument();
   });
 
   it("favorites count badge shows correct count", () => {
@@ -240,26 +199,7 @@ describe("PinnedPreview", () => {
     expect(onToggleFavorite).toHaveBeenCalled();
   });
 
-  it("book button in recent tab calls onOpenBookDialog", () => {
-    const onOpenBookDialog = vi.fn();
-    const pinned = [makeIssue(1, "Alpha")];
-    const recent = [makeIssue(2, "Beta"), makeIssue(3, "Gamma")];
-    render(
-      <PinnedPreview
-        {...defaultProps}
-        pinnedIssues={pinned}
-        pinnedIds={new Set([1])}
-        recentlyPinned={recent}
-        onOpenBookDialog={onOpenBookDialog}
-      />,
-    );
-    fireEvent.click(screen.getByText(/zuletzt|recent/i));
-    const bookBtns = screen.getAllByLabelText(/manuell buchen|book manually/i);
-    fireEvent.click(bookBtns[0]);
-    expect(onOpenBookDialog).toHaveBeenCalled();
-  });
-
-  it("book button in my tickets tab calls onOpenBookDialog", () => {
+  it("clicking card in my tickets tab calls onOpenBookDialog", () => {
     const onOpenBookDialog = vi.fn();
     const assigned = [makeIssue(10, "Gamma")];
     render(
@@ -271,8 +211,8 @@ describe("PinnedPreview", () => {
       />,
     );
     fireEvent.click(screen.getByText(/eigene tickets|my tickets/i));
-    const bookBtns = screen.getAllByLabelText(/manuell buchen|book manually/i);
-    fireEvent.click(bookBtns[0]);
+    const card = document.querySelector(".search-result-card")!;
+    fireEvent.click(card);
     expect(onOpenBookDialog).toHaveBeenCalled();
   });
 });

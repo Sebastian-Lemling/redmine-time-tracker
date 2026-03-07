@@ -6,7 +6,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 28px;
+  height: 32px;
   padding: 0 10px 0 12px;
   border-radius: 8px;
   border: 1px solid var(--color-outline-variant);
@@ -29,6 +29,10 @@
 }
 .chip-menu__trigger:active {
   background-color: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+}
+.chip-menu__trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 .chip-menu__trigger--empty {
   opacity: 0.6;

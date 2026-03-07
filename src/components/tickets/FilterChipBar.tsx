@@ -40,18 +40,10 @@ export function FilterChipBar({
 
   const chipCount = (selectedProjectId ? 7 : 5) + (search.hasActiveFilters ? 1 : 0);
   const filterSizeClass =
-    chipCount >= 8
-      ? " search-panel__filters--dense"
-      : chipCount >= 6
-        ? " search-panel__filters--compact"
-        : "";
+    chipCount >= 8 ? " filter-chip-bar--dense" : chipCount >= 6 ? " filter-chip-bar--compact" : "";
 
   return (
-    <div
-      className={`search-panel__filters${filterSizeClass}`}
-      role="toolbar"
-      aria-label={t.filters}
-    >
+    <div className={`filter-chip-bar${filterSizeClass}`} role="toolbar" aria-label={t.filters}>
       <FilterChip
         label={
           selectedProjectId
@@ -168,13 +160,13 @@ export function FilterChipBar({
       />
       {search.hasActiveFilters && (
         <button
-          className="search-chip search-chip--clear"
+          className="filter-chip filter-chip--clear"
           onClick={search.resetFilters}
           aria-label={t.clearFilters}
         >
           <X size={12} />
           {t.clearFilters}
-          <span className="search-chip__count">{activeFilterCount}</span>
+          <span className="filter-chip__count">{activeFilterCount}</span>
         </button>
       )}
     </div>

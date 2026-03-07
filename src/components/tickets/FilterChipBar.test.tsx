@@ -30,6 +30,7 @@ function makeSearch(
     retry: vi.fn(),
     recentSearches: [],
     applyRecentSearch: vi.fn(),
+    removeRecentSearch: vi.fn(),
     clearRecent: vi.fn(),
     ...overrides,
   };
@@ -179,7 +180,7 @@ describe("FilterChipBar", () => {
     });
     const { container } = render(<FilterChipBar {...makeProps({ search })} />);
     // project selected = 7 chips + clear = 8 chips → dense
-    expect(container.querySelector(".search-panel__filters--dense")).toBeInTheDocument();
+    expect(container.querySelector(".filter-chip-bar--dense")).toBeInTheDocument();
   });
 
   it("applies compact class when chip count >= 6 but < 8", () => {
@@ -189,14 +190,14 @@ describe("FilterChipBar", () => {
     });
     const { container } = render(<FilterChipBar {...makeProps({ search })} />);
     // project selected = 7 chips, no clear = 7 → compact
-    expect(container.querySelector(".search-panel__filters--compact")).toBeInTheDocument();
+    expect(container.querySelector(".filter-chip-bar--compact")).toBeInTheDocument();
   });
 
   it("no size class when chip count < 6", () => {
     const { container } = render(<FilterChipBar {...makeProps()} />);
     // no project = 5 chips → no special class
-    expect(container.querySelector(".search-panel__filters--dense")).not.toBeInTheDocument();
-    expect(container.querySelector(".search-panel__filters--compact")).not.toBeInTheDocument();
+    expect(container.querySelector(".filter-chip-bar--dense")).not.toBeInTheDocument();
+    expect(container.querySelector(".filter-chip-bar--compact")).not.toBeInTheDocument();
   });
 
   it("shows selected version name when fixed_version_id is set", () => {
@@ -244,7 +245,7 @@ describe("FilterChipBar", () => {
     });
     render(<FilterChipBar {...makeProps({ search })} />);
     const sortChip = screen.getByLabelText(/sort/i);
-    expect(sortChip.className).not.toContain("search-chip--active");
+    expect(sortChip.className).not.toContain("filter-chip--active");
   });
 
   it("sort chip is active when sort is non-default", () => {
@@ -253,7 +254,7 @@ describe("FilterChipBar", () => {
     });
     render(<FilterChipBar {...makeProps({ search })} />);
     const sortChip = screen.getByLabelText(/sort/i);
-    expect(sortChip.className).toContain("search-chip--active");
+    expect(sortChip.className).toContain("filter-chip--active");
   });
 
   it("selecting an assignee option calls setParam with assigned_to_id", () => {

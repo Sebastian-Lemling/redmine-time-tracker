@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Pin, Star } from "lucide-react";
+import { Copy, Check, Pin } from "lucide-react";
 import type {
   RedmineIssue,
   RedmineStatus,
@@ -29,8 +29,6 @@ interface Props {
   projectColor?: string;
   isPinned?: boolean;
   onTogglePin?: (issue: RedmineIssue) => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: (issue: RedmineIssue) => void;
 }
 
 export function TicketCardHeader({
@@ -51,8 +49,6 @@ export function TicketCardHeader({
   projectColor,
   isPinned,
   onTogglePin,
-  isFavorite,
-  onToggleFavorite,
 }: Props) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
@@ -93,7 +89,11 @@ export function TicketCardHeader({
             aria-label={`Copy #${issue.id} to clipboard`}
             title={copied ? t.copied : t.copyId(issue.id)}
           >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? (
+              <Check size={14} strokeWidth={1.75} />
+            ) : (
+              <Copy size={14} strokeWidth={1.75} />
+            )}
           </button>
         </div>
       </div>
@@ -164,55 +164,32 @@ export function TicketCardHeader({
             title={isPinned ? t.unpinIssue(issue.id) : t.pinIssue(issue.id)}
             type="button"
           >
-            <svg width={28} height={28} viewBox="0 0 28 28" className="card-header__pin-ring">
+            <svg width={32} height={32} viewBox="0 0 32 32" className="card-header__pin-ring">
               <circle
-                cx={14}
-                cy={14}
-                r={12.25}
+                cx={16}
+                cy={16}
+                r={14.25}
                 fill="none"
                 stroke="color-mix(in srgb, var(--color-primary) 25%, transparent)"
                 strokeWidth={2.5}
               />
               {isPinned && (
                 <circle
-                  cx={14}
-                  cy={14}
-                  r={12.25}
+                  cx={16}
+                  cy={16}
+                  r={14.25}
                   fill="none"
                   stroke="var(--color-primary)"
                   strokeWidth={2.5}
-                  strokeDasharray={`${2 * Math.PI * 12.25}`}
+                  strokeDasharray={`${2 * Math.PI * 14.25}`}
                   strokeDashoffset="0"
                   strokeLinecap="round"
-                  transform="rotate(-90 14 14)"
+                  transform="rotate(-90 16 16)"
                 />
               )}
             </svg>
             <span className="card-header__pin-icon">
-              <Pin size={10} />
-            </span>
-          </button>
-        )}
-        {onToggleFavorite && (
-          <button
-            className={`card-header__star-btn${isFavorite ? " card-header__star-btn--filled" : " card-header__star-btn--ghost"}`}
-            onClick={() => onToggleFavorite(issue)}
-            aria-label={isFavorite ? t.unfavoriteIssue(issue.id) : t.favoriteIssue(issue.id)}
-            title={isFavorite ? t.unfavoriteIssue(issue.id) : t.favoriteIssue(issue.id)}
-            type="button"
-          >
-            <svg width={28} height={28} viewBox="0 0 28 28" className="card-header__star-ring">
-              <circle
-                cx={14}
-                cy={14}
-                r={12.25}
-                fill="none"
-                stroke="color-mix(in srgb, var(--color-star, #f9ab00) 25%, transparent)"
-                strokeWidth={2.5}
-              />
-            </svg>
-            <span className="card-header__star-icon">
-              <Star size={10} fill={isFavorite ? "currentColor" : "none"} />
+              <Pin size={14} strokeWidth={1.75} />
             </span>
           </button>
         )}
