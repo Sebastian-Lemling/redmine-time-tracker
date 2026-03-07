@@ -105,7 +105,6 @@ vi.mock("./hooks/usePinnedIssues", () => ({
   usePinnedIssues: () => ({
     pinnedIds: new Set(),
     pinnedIssues: [],
-    recentlyPinned: [],
     isPinned: mockIsPinned,
     toggle: mockToggle,
     unpin: mockUnpin,
@@ -444,7 +443,7 @@ describe("App", () => {
     expect(screen.queryByTestId("edit-dialog")).not.toBeInTheDocument();
   });
 
-  it("passes correct props to AppContent including entries and onRefresh", () => {
+  it("passes correct props to AppContent including entries", () => {
     redmineOverrides = {
       user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
     };
@@ -452,7 +451,6 @@ describe("App", () => {
     expect(capturedAppContentProps.activeSection).toBe("tickets");
     expect(capturedAppContentProps.mergedIssues).toEqual([]);
     expect(capturedAppContentProps.entries).toEqual([]);
-    expect(typeof capturedAppContentProps.onFetchIssues).toBe("function");
     expect(typeof capturedAppContentProps.onTogglePin).toBe("function");
     expect(typeof capturedAppContentProps.onToggleAssignedPin).toBe("function");
   });
@@ -563,98 +561,6 @@ describe("App", () => {
     };
     render(<App />);
     expect(mockSyncAssignedPins).toHaveBeenCalledWith(issues);
-  });
-
-  it("onRefresh fetches issues, refreshes pinned, and shows snackbar for no changes", async () => {
-    vi.useFakeTimers();
-    mockFetchIssues.mockResolvedValue([]);
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-      issues: [],
-    };
-    render(<App />);
-
-    await act(async () => {
-      capturedAppContentProps.onFetchIssues();
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1300);
-    });
-
-    expect(mockFetchIssues).toHaveBeenCalled();
-    expect(mockRefreshPinned).toHaveBeenCalled();
-    expect(mockShowSnackbar).toHaveBeenCalled();
-    vi.useRealTimers();
-  });
-
-  it("onRefresh shows refreshUpdated when issues change", async () => {
-    vi.useFakeTimers();
-    const oldIssues = [
-      { id: 1, subject: "Old", project: { id: 1, name: "P" }, updated_on: "2026-01-01T00:00:00Z" },
-    ];
-    const newIssues = [
-      {
-        id: 1,
-        subject: "Updated",
-        project: { id: 1, name: "P" },
-        updated_on: "2026-01-02T00:00:00Z",
-      },
-    ];
-    mockFetchIssues.mockResolvedValue(newIssues);
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-      issues: oldIssues as any[],
-    };
-    render(<App />);
-
-    await act(async () => {
-      capturedAppContentProps.onFetchIssues();
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1300);
-    });
-
-    expect(mockShowSnackbar).toHaveBeenCalled();
-    vi.useRealTimers();
-  });
-
-  it("onRefresh shows refreshFailed on fetch error", async () => {
-    vi.useFakeTimers();
-    mockFetchIssues.mockRejectedValue(new Error("Network error"));
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-      issues: [],
-    };
-    render(<App />);
-
-    await act(async () => {
-      capturedAppContentProps.onFetchIssues();
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1300);
-    });
-
-    expect(mockShowSnackbar).toHaveBeenCalled();
-    vi.useRealTimers();
-  });
-
-  it("onRefresh does not run twice concurrently", async () => {
-    vi.useFakeTimers();
-    mockFetchIssues.mockResolvedValue([]);
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-      issues: [],
-    };
-    render(<App />);
-
-    await act(async () => {
-      capturedAppContentProps.onFetchIssues();
-      capturedAppContentProps.onFetchIssues();
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1300);
-    });
-    vi.useRealTimers();
   });
 
   it("BookingDialog receives doneRatio from issues when bookDialog lacks it", async () => {
