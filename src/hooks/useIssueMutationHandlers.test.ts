@@ -38,6 +38,7 @@ function makeDeps(overrides?: Record<string, unknown>) {
     updateIssueVersion: vi.fn().mockResolvedValue(undefined),
     updateIssueDoneRatio: vi.fn().mockResolvedValue(undefined),
     invalidateAllowedStatuses: vi.fn(),
+    fetchIssues: vi.fn().mockResolvedValue([]),
     isPinned: vi.fn().mockReturnValue(false),
     updatePinnedIssue: vi.fn(),
     updateFavoriteIssue: vi.fn(),

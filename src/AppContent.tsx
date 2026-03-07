@@ -124,6 +124,7 @@ export default function AppContent(props: Props) {
                 onFetchIssueDescription={props.onFetchIssueDescription}
                 onTogglePin={props.onTogglePin}
                 favoriteIds={props.favoriteIds}
+                favoriteIssues={props.favoriteIssues}
                 onToggleFavorite={props.onToggleFavorite}
               />
             </ErrorBoundary>

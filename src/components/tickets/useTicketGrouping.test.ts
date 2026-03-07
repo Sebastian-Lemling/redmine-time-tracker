@@ -84,6 +84,7 @@ describe("useTicketGrouping", () => {
     it("shows only favorite issues grouped by project when active", () => {
       const issues = [makeIssue(1, "Alpha"), makeIssue(2, "Alpha"), makeIssue(3, "Beta")];
       const favoriteIds = new Set([1, 3]);
+      const favoriteIssues = issues.filter((i) => favoriteIds.has(i.id));
       const { result } = renderHook(() =>
         useTicketGrouping({
           issues,
@@ -91,6 +92,7 @@ describe("useTicketGrouping", () => {
           showTrackedOnly: false,
           showFavoritesGroup: true,
           favoriteIds,
+          favoriteIssues,
         }),
       );
       expect(result.current.grouped["Alpha"]).toHaveLength(1);
@@ -140,6 +142,7 @@ describe("useTicketGrouping", () => {
     it("works with showTrackedOnly", () => {
       const issues = [makeIssue(1, "P"), makeIssue(2, "P")];
       const favoriteIds = new Set([1, 2]);
+      const favoriteIssues = issues.filter((i) => favoriteIds.has(i.id));
       const timers: MultiTimerMap = {
         1: { issueId: 1, issueSubject: "x", projectName: "P", startTime: "2025-01-01" },
       };
@@ -150,6 +153,7 @@ describe("useTicketGrouping", () => {
           showTrackedOnly: true,
           showFavoritesGroup: true,
           favoriteIds,
+          favoriteIssues,
         }),
       );
       expect(result.current.grouped["P"]).toHaveLength(1);

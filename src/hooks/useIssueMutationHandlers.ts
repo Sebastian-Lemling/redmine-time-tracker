@@ -20,6 +20,7 @@ interface Deps {
   updatePinnedIssue: (issue: RedmineIssue) => void;
   updateFavoriteIssue: (issue: RedmineIssue) => void;
   setSnackbar: (msg: string) => void;
+  fetchIssues: () => Promise<RedmineIssue[]>;
   onMutationSuccess?: () => void;
   t: Translations;
 }
@@ -38,6 +39,7 @@ export function useIssueMutationHandlers(deps: Deps) {
     updateIssueVersion,
     updateIssueDoneRatio,
     invalidateAllowedStatuses,
+    fetchIssues,
     isPinned,
     updatePinnedIssue,
     updateFavoriteIssue,
@@ -122,8 +124,9 @@ export function useIssueMutationHandlers(deps: Deps) {
         t.assigneeUpdated,
         t.assigneeChangeFailed,
       );
+      fetchIssues();
     },
-    [updateIssueAssignee, mutateIssue, t],
+    [updateIssueAssignee, mutateIssue, fetchIssues, t],
   );
 
   const handleVersionChange = useCallback(

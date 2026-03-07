@@ -8,6 +8,8 @@ const STORAGE_KEY = "pinned-issue-ids";
 const CACHE_KEY = "pinned-issue-cache";
 const RECENT_PINS_KEY = "recent-pinned-issues";
 const HIDDEN_ASSIGNED_KEY = "hidden-assigned-ids";
+const AUTO_PIN_KEY = "auto-pinned-ids";
+const AUTO_PIN_MIGRATION_KEY = "auto-pin-migration-done";
 const MIGRATION_KEY = "pin-migration-done";
 const MAX_RECENT = 10;
 
@@ -27,6 +29,15 @@ function loadHiddenIds(): Set<number> {
 
 function saveHiddenIds(ids: Set<number>) {
   safeSet(HIDDEN_ASSIGNED_KEY, [...ids]);
+}
+
+function loadAutoPinIds(): Set<number> {
+  const arr = safeGet<unknown[]>(AUTO_PIN_KEY, []);
+  return new Set(arr.filter((v): v is number => typeof v === "number"));
+}
+
+function saveAutoPinIds(ids: Set<number>) {
+  safeSet(AUTO_PIN_KEY, [...ids]);
 }
 
 function loadCachedIssues(): Record<number, RedmineIssue> {
@@ -83,6 +94,7 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
 
   const [recentPins, setRecentPins] = useState<RecentPinEntry[]>(loadRecentPins);
   const [hiddenAssignedIds, setHiddenAssignedIds] = useState<Set<number>>(loadHiddenIds);
+  const [autoPinIds, setAutoPinIds] = useState<Set<number>>(loadAutoPinIds);
   const loadedRef = useRef(false);
 
   // Derived state — always in sync with pinMap within the same render
@@ -163,6 +175,10 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
     saveHiddenIds(hiddenAssignedIds);
   }, [hiddenAssignedIds]);
 
+  useEffect(() => {
+    saveAutoPinIds(autoPinIds);
+  }, [autoPinIds]);
+
   const hide = useCallback((issueId: number) => {
     setHiddenAssignedIds((prev) => {
       const next = new Set(prev);
@@ -184,36 +200,74 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
     (assignedIssues: RedmineIssue[]) => {
       if (assignedIssues.length === 0) return;
 
+      const assignedIdSet = new Set(assignedIssues.map((i) => i.id));
+
+      const autoPinMigrated = safeGet<boolean>(AUTO_PIN_MIGRATION_KEY, false);
+      let effectiveAutoPinIds = autoPinIds;
+      if (!autoPinMigrated) {
+        safeSet(AUTO_PIN_MIGRATION_KEY, true);
+        const currentPinIds = loadIds();
+        const migrated = new Set(autoPinIds);
+        for (const id of currentPinIds) {
+          if (assignedIdSet.has(id)) migrated.add(id);
+        }
+        effectiveAutoPinIds = migrated;
+        setAutoPinIds(migrated);
+      }
+
       const migrated = safeGet<boolean>(MIGRATION_KEY, false);
       if (!migrated) {
         safeSet(MIGRATION_KEY, true);
+        const newlyPinned = new Set<number>();
         setPinMap((prev) => {
           const next = new Map(prev);
           for (const issue of assignedIssues) {
             if (!next.has(issue.id) && !hiddenAssignedIds.has(issue.id)) {
               next.set(issue.id, issue);
+              newlyPinned.add(issue.id);
             }
           }
+          return next;
+        });
+        setAutoPinIds((prev) => {
+          const next = new Set(prev);
+          for (const id of newlyPinned) next.add(id);
           return next;
         });
         return;
       }
 
-      // Auto-pin new assigned issues that aren't hidden
+      const newlyPinned = new Set<number>();
       setPinMap((prev) => {
         let changed = false;
         const next = new Map(prev);
+        for (const id of prev.keys()) {
+          if (!assignedIdSet.has(id) && effectiveAutoPinIds.has(id)) {
+            next.delete(id);
+            changed = true;
+          }
+        }
         for (const issue of assignedIssues) {
           if (!next.has(issue.id) && !hiddenAssignedIds.has(issue.id)) {
             next.set(issue.id, issue);
+            newlyPinned.add(issue.id);
             changed = true;
           }
         }
         return changed ? next : prev;
       });
 
+      setAutoPinIds((prev) => {
+        const next = new Set(prev);
+        for (const id of newlyPinned) next.add(id);
+        for (const id of prev) {
+          if (!assignedIdSet.has(id)) next.delete(id);
+        }
+        if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
+        return next;
+      });
+
       // Cleanup: remove hidden IDs that are no longer assigned
-      const assignedIdSet = new Set(assignedIssues.map((i) => i.id));
       setHiddenAssignedIds((prev) => {
         let changed = false;
         const next = new Set<number>();
@@ -227,7 +281,7 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
         return changed ? next : prev;
       });
     },
-    [hiddenAssignedIds],
+    [hiddenAssignedIds, autoPinIds],
   );
 
   const addToRecentPins = useCallback((issue: RedmineIssue) => {
@@ -237,30 +291,45 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
     });
   }, []);
 
+  const removeAutoPin = useCallback((issueId: number) => {
+    setAutoPinIds((prev) => {
+      if (!prev.has(issueId)) return prev;
+      const next = new Set(prev);
+      next.delete(issueId);
+      return next;
+    });
+  }, []);
+
   const pin = useCallback(
     (issue: RedmineIssue) => {
       setPinMap((prev) => new Map(prev).set(issue.id, issue));
       unhide(issue.id);
+      removeAutoPin(issue.id);
       addToRecentPins(issue);
     },
-    [addToRecentPins, unhide],
+    [addToRecentPins, unhide, removeAutoPin],
   );
 
   const pinSilent = useCallback(
     (issue: RedmineIssue) => {
       setPinMap((prev) => new Map(prev).set(issue.id, issue));
       unhide(issue.id);
+      removeAutoPin(issue.id);
     },
-    [unhide],
+    [unhide, removeAutoPin],
   );
 
-  const unpin = useCallback((issueId: number) => {
-    setPinMap((prev) => {
-      const next = new Map(prev);
-      next.delete(issueId);
-      return next;
-    });
-  }, []);
+  const unpin = useCallback(
+    (issueId: number) => {
+      setPinMap((prev) => {
+        const next = new Map(prev);
+        next.delete(issueId);
+        return next;
+      });
+      removeAutoPin(issueId);
+    },
+    [removeAutoPin],
+  );
 
   const toggle = useCallback(
     (issue: RedmineIssue) => {
@@ -274,11 +343,12 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
         }
         return next;
       });
+      removeAutoPin(issue.id);
       if (wasPinned) return;
       unhide(issue.id);
       addToRecentPins(issue);
     },
-    [pinnedIds, addToRecentPins, unhide],
+    [pinnedIds, addToRecentPins, unhide, removeAutoPin],
   );
 
   const isPinned = useCallback((id: number) => pinnedIds.has(id), [pinnedIds]);

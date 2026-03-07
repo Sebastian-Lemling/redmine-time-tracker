@@ -64,6 +64,7 @@ interface Props {
   pinnedIds?: Set<number>;
   onTogglePin?: (issue: RedmineIssue) => void;
   favoriteIds?: Set<number>;
+  favoriteIssues?: RedmineIssue[];
   onToggleFavorite?: (issue: RedmineIssue) => void;
 }
 
@@ -101,6 +102,7 @@ export function TicketList({
   pinnedIds,
   onTogglePin,
   favoriteIds,
+  favoriteIssues,
 }: Props) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -118,6 +120,7 @@ export function TicketList({
     showTrackedOnly,
     showFavoritesGroup,
     favoriteIds,
+    favoriteIssues,
   });
   const { projectOrder, dragActiveId, handleDragStart, handleDragEnd } =
     useProjectOrder(allProjectNames);

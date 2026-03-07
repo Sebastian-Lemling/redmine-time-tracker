@@ -33,6 +33,7 @@ interface UseTicketGroupingOpts {
   showTrackedOnly: boolean;
   showFavoritesGroup?: boolean;
   favoriteIds?: Set<number>;
+  favoriteIssues?: RedmineIssue[];
 }
 
 export function useTicketGrouping({
@@ -41,6 +42,7 @@ export function useTicketGrouping({
   showTrackedOnly,
   showFavoritesGroup,
   favoriteIds,
+  favoriteIssues,
 }: UseTicketGroupingOpts) {
   const filteredIssues = useMemo(
     () => (showTrackedOnly ? issues.filter((i) => !!timers[i.id]) : issues),
@@ -61,15 +63,16 @@ export function useTicketGrouping({
 
   const grouped = useMemo(() => {
     if (!showFavoritesGroup || !favoriteIds || favoriteIds.size === 0) return baseGrouped;
-    const favIssues = filteredIssues.filter((i) => favoriteIds.has(i.id));
-    if (favIssues.length === 0) return {};
-    return favIssues.reduce<Record<string, RedmineIssue[]>>((acc, issue) => {
+    let favSource = favoriteIssues ?? [];
+    if (showTrackedOnly) favSource = favSource.filter((i) => !!timers[i.id]);
+    if (favSource.length === 0) return {};
+    return favSource.reduce<Record<string, RedmineIssue[]>>((acc, issue) => {
       const key = issue.project.name;
       if (!acc[key]) acc[key] = [];
       acc[key].push(issue);
       return acc;
     }, {});
-  }, [baseGrouped, filteredIssues, showFavoritesGroup, favoriteIds]);
+  }, [baseGrouped, favoriteIssues, showFavoritesGroup, favoriteIds, showTrackedOnly, timers]);
 
   return { grouped, allProjectNames, colorMap };
 }

@@ -228,7 +228,8 @@ describe("TicketList", () => {
   it("favorites mode shows only favorited issues grouped by project", () => {
     localStorage.setItem("show-favorites-group", "true");
     const favoriteIds = new Set([101]);
-    render(<TicketList {...makeProps({ favoriteIds })} />);
+    const favoriteIssues = [issueAlpha1];
+    render(<TicketList {...makeProps({ favoriteIds, favoriteIssues })} />);
     expect(screen.getByText("Alpha Issue 1")).toBeInTheDocument();
     expect(screen.queryByText("Alpha Issue 2")).not.toBeInTheDocument();
     expect(screen.queryByText("Beta Issue 1")).not.toBeInTheDocument();

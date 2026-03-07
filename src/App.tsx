@@ -49,7 +49,9 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [redmine.user]);
   const assignedIdSet = useMemo(() => new Set(redmine.issues.map((i) => i.id)), [redmine.issues]);
-  const mergedIssues = useMemo(() => {
+  const mergedIssues = useMemo(() => pinned.pinnedIssues, [pinned.pinnedIssues]);
+
+  const allKnownIssues = useMemo(() => {
     const pinnedIdSet = pinned.pinnedIds;
     const extras = favorites.favoriteIssues.filter((i) => !pinnedIdSet.has(i.id));
     return extras.length > 0 ? [...pinned.pinnedIssues, ...extras] : pinned.pinnedIssues;
@@ -110,7 +112,7 @@ export default function App() {
   });
 
   const mutations = useIssueMutationHandlers({
-    mergedIssues,
+    mergedIssues: allKnownIssues,
     statuses: redmine.statuses,
     trackers: redmine.trackers,
     versionsByProject: redmine.versionsByProject,
@@ -122,6 +124,7 @@ export default function App() {
     updateIssueVersion: redmine.updateIssueVersion,
     updateIssueDoneRatio: redmine.updateIssueDoneRatio,
     invalidateAllowedStatuses: redmine.invalidateAllowedStatuses,
+    fetchIssues: redmine.fetchIssues,
     isPinned: pinned.isPinned,
     updatePinnedIssue: pinned.updateIssue,
     updateFavoriteIssue: favorites.updateIssue,
