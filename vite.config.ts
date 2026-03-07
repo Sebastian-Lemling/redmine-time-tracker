@@ -10,6 +10,23 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          icons: ["lucide-react"],
+          vendor: [
+            "motion",
+            "react-markdown",
+            "clsx",
+            "@dnd-kit/core",
+            "@dnd-kit/sortable",
+            "@dnd-kit/utilities",
+          ],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     strictPort: true,
