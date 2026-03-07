@@ -137,6 +137,36 @@ describe("translations", () => {
     it("refreshUpdated plural", () => {
       expect(de.refreshUpdated(5)).toBe("5 Tickets aktualisiert");
     });
+
+    it("openInRedmine contains id and Redmine", () => {
+      const result = de.openInRedmine(42);
+      expect(result).toContain("42");
+      expect(result).toContain("Redmine");
+    });
+
+    it("issuePinned contains id", () => {
+      expect(de.issuePinned(42)).toContain("42");
+    });
+
+    it("issueUnpinned contains id", () => {
+      expect(de.issueUnpinned(42)).toContain("42");
+    });
+
+    it("issueFavorited contains id", () => {
+      expect(de.issueFavorited(42)).toContain("42");
+    });
+
+    it("issueUnfavorited contains id", () => {
+      expect(de.issueUnfavorited(42)).toContain("42");
+    });
+
+    it("timeAgo contains value", () => {
+      expect(de.timeAgo(2, "day")).toContain("2");
+    });
+
+    it("justNow is non-empty", () => {
+      expect(de.justNow.length).toBeGreaterThan(0);
+    });
   });
 
   describe("parameterized functions - en", () => {
@@ -238,6 +268,36 @@ describe("translations", () => {
 
     it("refreshUpdated plural", () => {
       expect(en.refreshUpdated(5)).toBe("5 tickets updated");
+    });
+
+    it("openInRedmine contains id and Redmine", () => {
+      const result = en.openInRedmine(42);
+      expect(result).toContain("42");
+      expect(result).toContain("Redmine");
+    });
+
+    it("issuePinned contains id", () => {
+      expect(en.issuePinned(42)).toContain("42");
+    });
+
+    it("issueUnpinned contains id", () => {
+      expect(en.issueUnpinned(42)).toContain("42");
+    });
+
+    it("issueFavorited contains id", () => {
+      expect(en.issueFavorited(42)).toContain("42");
+    });
+
+    it("issueUnfavorited contains id", () => {
+      expect(en.issueUnfavorited(42)).toContain("42");
+    });
+
+    it("timeAgo contains value", () => {
+      expect(en.timeAgo(2, "day")).toContain("2");
+    });
+
+    it("justNow is non-empty", () => {
+      expect(en.justNow.length).toBeGreaterThan(0);
     });
   });
 
