@@ -101,28 +101,61 @@ npm run setup
 
 Runs Node.js directly on your machine. Credentials are stored in your OS keystore (macOS Keychain, GNOME Keyring, or `.env` fallback).
 
+Choose "Local" in the setup wizard, enter your Redmine URL and API key:
+
 ```bash
-npm run setup    # Choose "Local", enter Redmine URL + API key
-npm run dev      # Opens at http://localhost:5173
+npm run setup
 ```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Opens at **http://localhost:5173**.
 
 ### Docker
 
 Runs the app in a container. Requires Docker.
 
+Choose "Docker" in the setup wizard — it builds the image and starts the container automatically:
+
 ```bash
-npm run setup    # Choose "Docker", enter Redmine URL + API key — builds & starts automatically
+npm run setup
 ```
 
 The app will be available at **http://localhost:9500**. Timelog data is persisted in a Docker volume.
 
-| Command                 | Description                            |
-| ----------------------- | -------------------------------------- |
-| `npm run docker:up`     | Start the container                    |
-| `npm run docker:down`   | Stop the container                     |
-| `npm run docker:update` | Pull latest changes, rebuild & restart |
-| `npm run docker:logs`   | Follow container logs                  |
-| `npm run docker:build`  | Rebuild the image                      |
+Stop the container:
+
+```bash
+npm run docker:down
+```
+
+Start the container:
+
+```bash
+npm run docker:up
+```
+
+Pull latest changes, rebuild and restart:
+
+```bash
+npm run docker:update
+```
+
+Follow container logs:
+
+```bash
+npm run docker:logs
+```
+
+Rebuild the image:
+
+```bash
+npm run docker:build
+```
 
 See the **[Installation Guide](docs/installation.md)** for OS-specific instructions.
 
