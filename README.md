@@ -3,7 +3,7 @@
   <p><strong>Track time beautifully.</strong> A modern Redmine client that feels like a Google app.</p>
 
   <p>
-    <a href="#screenshots">Screenshots</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="#quick-start">Quick Start</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="docs/installation.md">Installation Guide</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="CONTRIBUTING.md">Contributing</a>
+    <a href="#screenshots">Screenshots</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="#quick-start">Quick Start</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="CONTRIBUTING.md">Contributing</a>
   </p>
 
   <br />
@@ -88,76 +88,46 @@ Redmine's built-in time tracking is clunky and slow. This app replaces it with a
 
 ## Quick Start
 
-The setup wizard lets you choose between running locally or with Docker.
-
 ```bash
 git clone https://github.com/Sebastian-Lemling/redmine-time-tracker.git
 cd redmine-time-tracker
 npm install
+```
+
+Run the interactive setup wizard — it will ask whether you want to run locally or with Docker:
+
+```bash
 npm run setup
 ```
 
 ### Local
 
-Runs Node.js directly on your machine. Credentials are stored in your OS keystore (macOS Keychain, GNOME Keyring, or `.env` fallback).
-
-Choose "Local" in the setup wizard, enter your Redmine URL and API key:
-
-```bash
-npm run setup
-```
-
-Start the development server:
+After setup, start the development server:
 
 ```bash
 npm run dev
 ```
 
-Opens at **http://localhost:5173**.
+The app opens at **http://localhost:5173**. The proxy server starts automatically alongside Vite.
 
 ### Docker
 
-Runs the app in a container. Requires Docker.
+The setup wizard builds the image and starts the container automatically. The app will be available at **http://localhost:9500**.
 
-Choose "Docker" in the setup wizard — it builds the image and starts the container automatically:
+Timelog data is persisted in a Docker volume and survives container restarts.
 
-```bash
-npm run setup
-```
+<details>
+<summary>Docker management commands</summary>
 
-The app will be available at **http://localhost:9500**. Timelog data is persisted in a Docker volume.
+| Command                 | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `npm run docker:up`     | Start the container                       |
+| `npm run docker:down`   | Stop and remove the container             |
+| `npm run docker:update` | Pull latest changes, rebuild, and restart |
+| `npm run docker:logs`   | Follow container logs                     |
+| `npm run docker:build`  | Rebuild the image without starting        |
 
-Stop the container:
-
-```bash
-npm run docker:down
-```
-
-Start the container:
-
-```bash
-npm run docker:up
-```
-
-Pull latest changes, rebuild and restart:
-
-```bash
-npm run docker:update
-```
-
-Follow container logs:
-
-```bash
-npm run docker:logs
-```
-
-Rebuild the image:
-
-```bash
-npm run docker:build
-```
-
-See the **[Installation Guide](docs/installation.md)** for OS-specific instructions.
+</details>
 
 ## Contributing
 
