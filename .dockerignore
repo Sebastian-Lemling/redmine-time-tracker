@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+test-results
+playwright-report
+blob-report
+.git
+.claude
+.husky
+.vscode
+.idea
+*.log
+*.md
+data
+e2e

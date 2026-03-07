@@ -1,0 +1,13 @@
+services:
+  redmine-tracker:
+    build: .
+    ports:
+      - "9500:3001"
+    env_file:
+      - .env
+    volumes:
+      - tracker-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  tracker-data:
