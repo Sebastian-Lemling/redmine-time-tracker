@@ -1,7 +1,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@/test/test-utils";
+import { render as baseRender, screen, fireEvent, act } from "@/test/test-utils";
 import { MonthView } from "./MonthView";
+import { AppProvider } from "@/AppContext";
+import type { AppContextValue } from "@/AppContext";
 import type { TimeLogEntry as TEntry, RedmineTimeEntry } from "@/types/redmine";
+
+const defaultCtx: AppContextValue = {
+  user: { id: 1, login: "test", firstname: "T", lastname: "U", mail: "t@t.com" },
+  redmineUrl: "http://redmine.test",
+  route: { section: "timelog" },
+  navigate: () => {},
+  todayMinutes: 0,
+  weekMinutes: 0,
+  unsyncedCount: 0,
+  themeMode: "light",
+  setThemeMode: () => {},
+  loading: false,
+  isRefreshing: false,
+  onRefresh: () => {},
+  instances: [{ id: "default", name: "Redmine", url: "", order: 0 }],
+  activeInstanceId: "default",
+  instanceColorMap: { default: "#1a73e8" },
+};
+
+function render(ui: React.ReactElement) {
+  return baseRender(<AppProvider value={defaultCtx}>{ui}</AppProvider>);
+}
 
 function makeEntry(overrides?: Partial<TEntry>): TEntry {
   return {
@@ -440,19 +464,21 @@ describe("MonthView", () => {
     expect(getSyncButton()).toBeInTheDocument();
 
     rerender(
-      <MonthView
-        {...makeProps({
-          entries: [makeEntry({ id: "e2", date: "2025-01-16" })],
-          navigate,
-          route: {
-            section: "timelog" as const,
-            year: 2025,
-            month: 0,
-            day: 16,
-            tab: "unsynced",
-          },
-        })}
-      />,
+      <AppProvider value={defaultCtx}>
+        <MonthView
+          {...makeProps({
+            entries: [makeEntry({ id: "e2", date: "2025-01-16" })],
+            navigate,
+            route: {
+              section: "timelog" as const,
+              year: 2025,
+              month: 0,
+              day: 16,
+              tab: "unsynced",
+            },
+          })}
+        />
+      </AppProvider>,
     );
 
     expect(screen.queryByRole("button", { name: /^senden$|^send$/i })).not.toBeInTheDocument();
@@ -560,34 +586,44 @@ describe("MonthView", () => {
     });
   });
 
-  it("onFetchProjectActivities called for entries with unknown projects", () => {
-    const onFetchProjectActivities = vi.fn();
+  it("fetches activities per-instance for entries with unknown projects", () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ time_entry_activities: [{ id: 9, name: "Dev" }] })),
+      );
     render(
       <MonthView
         {...makeProps({
-          onFetchProjectActivities,
-          entries: [makeEntry({ projectId: 42, date: "2025-01-15" })],
+          entries: [makeEntry({ projectId: 42, instanceId: "inst1", date: "2025-01-15" })],
           activitiesByProject: {},
           route: { section: "timelog" as const, year: 2025, month: 0, day: 15 },
         })}
       />,
     );
-    expect(onFetchProjectActivities).toHaveBeenCalledWith(42);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining("/api/i/inst1/projects/42/activities"),
+      expect.anything(),
+    );
+    fetchSpy.mockRestore();
   });
 
-  it("onFetchProjectActivities not called when project activities already loaded", () => {
-    const onFetchProjectActivities = vi.fn();
+  it("does not fetch activities when project activities already loaded", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(
       <MonthView
         {...makeProps({
-          onFetchProjectActivities,
           entries: [makeEntry({ projectId: 1, date: "2025-01-15" })],
           activitiesByProject: { 1: [{ id: 5, name: "Dev" }] },
           route: { section: "timelog" as const, year: 2025, month: 0, day: 15 },
         })}
       />,
     );
-    expect(onFetchProjectActivities).not.toHaveBeenCalled();
+    const activityFetches = fetchSpy.mock.calls.filter(
+      ([url]) => typeof url === "string" && url.includes("/activities"),
+    );
+    expect(activityFetches).toHaveLength(0);
+    fetchSpy.mockRestore();
   });
 
   it("entry edit through panel calls onEdit with entry object", () => {
@@ -675,38 +711,6 @@ describe("MonthView", () => {
     expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ day: 15, tab: "synced" }));
   });
 
-  it("heatQuartiles with empty entries shows no heat classes", () => {
-    const { container } = render(<MonthView {...makeProps()} />);
-    expect(container.querySelector(".cal-cell--heat-1")).not.toBeInTheDocument();
-  });
-
-  it("heatQuartiles assigns correct heat levels to days based on entry count", () => {
-    const entries = [
-      makeEntry({ id: "e1", date: "2025-01-06" }),
-      makeEntry({ id: "e2", date: "2025-01-07" }),
-      makeEntry({ id: "e3", date: "2025-01-07", issueId: 101 }),
-      makeEntry({ id: "e4", date: "2025-01-08" }),
-      makeEntry({ id: "e5", date: "2025-01-08", issueId: 102 }),
-      makeEntry({ id: "e6", date: "2025-01-08", issueId: 103 }),
-      makeEntry({ id: "e7", date: "2025-01-09" }),
-      makeEntry({ id: "e8", date: "2025-01-09", issueId: 104 }),
-      makeEntry({ id: "e9", date: "2025-01-09", issueId: 105 }),
-      makeEntry({ id: "e10", date: "2025-01-09", issueId: 106 }),
-    ];
-    render(
-      <MonthView
-        {...makeProps({
-          entries,
-          route: { section: "timelog" as const, year: 2025, month: 0, day: 15 },
-        })}
-      />,
-    );
-    const day6Btn = screen.getByText("6").closest("button")!;
-    const day9Btn = screen.getByText("9").closest("button")!;
-    expect(day6Btn.className).toMatch(/cal-cell--heat-1/);
-    expect(day9Btn.className).toMatch(/cal-cell--heat-4/);
-  });
-
   it("selectedDate defaults to first of month when today is in different month", () => {
     render(
       <MonthView
@@ -754,7 +758,7 @@ describe("MonthView", () => {
         })}
       />,
     );
-    expect(screen.getByText("0.5h", { selector: ".de-panel__metric" })).toBeInTheDocument();
+    expect(screen.getByText("0.5h", { selector: ".de-panel__total" })).toBeInTheDocument();
   });
 
   it("combined local+remote minutesByDate sums correctly on same date", () => {
@@ -787,7 +791,7 @@ describe("MonthView", () => {
         })}
       />,
     );
-    expect(screen.getByText("1h", { selector: ".de-panel__metric" })).toBeInTheDocument();
+    expect(screen.getByText("1h", { selector: ".de-panel__total" })).toBeInTheDocument();
   });
 
   it("selectedDayEntries sorted by startTime descending (newest first)", () => {
@@ -888,11 +892,11 @@ describe("MonthView", () => {
       />,
     );
     const day20Btn = screen.getByText("20").closest("button")!;
-    const localBar = day20Btn.querySelector(".cal-bar__local") as HTMLElement;
-    const remoteBar = day20Btn.querySelector(".cal-bar__remote") as HTMLElement;
-    expect(localBar).toBeInTheDocument();
-    expect(remoteBar).toBeInTheDocument();
-    expect(localBar.style.width).toBe("50%");
-    expect(remoteBar.style.width).toBe("50%");
+    const draftBar = day20Btn.querySelector(".cal-bar__draft") as HTMLElement;
+    const syncedBar = day20Btn.querySelector(".cal-bar__synced") as HTMLElement;
+    expect(draftBar).toBeInTheDocument();
+    expect(syncedBar).toBeInTheDocument();
+    expect(draftBar.style.width).toBe("50%");
+    expect(syncedBar.style.width).toBe("50%");
   });
 });

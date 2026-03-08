@@ -18,6 +18,9 @@ function makeContext(overrides?: Partial<AppContextValue>): AppContextValue {
     loading: false,
     isRefreshing: false,
     onRefresh: vi.fn(),
+    instances: [],
+    activeInstanceId: "default",
+    instanceColorMap: {},
     ...overrides,
   };
 }
@@ -84,5 +87,47 @@ describe("AppHeader", () => {
     renderWithContext(makeContext({ route: { section: "tickets" } as any }));
     const ticketsTab = screen.getByText(/tickets/i).closest("button")!;
     expect(ticketsTab.className).toContain("text-on-surface");
+  });
+
+  describe("multi-instance tabs", () => {
+    const instances = [
+      { id: "prod", name: "Production", url: "https://r1.test", order: 0 },
+      { id: "dev", name: "Development", url: "https://r2.test", order: 1 },
+    ];
+
+    it("renders one tab per instance instead of single Tickets tab", () => {
+      renderWithContext(makeContext({ instances }));
+      expect(screen.getByText("Production")).toBeInTheDocument();
+      expect(screen.getByText("Development")).toBeInTheDocument();
+      expect(screen.queryByText(/^tickets$/i)).not.toBeInTheDocument();
+    });
+
+    it("clicking instance tab navigates to tickets with instanceId", () => {
+      const navigate = vi.fn();
+      renderWithContext(makeContext({ instances, navigate }));
+      fireEvent.click(screen.getByText("Development"));
+      expect(navigate).toHaveBeenCalledWith({ section: "tickets", instanceId: "dev" });
+    });
+
+    it("active instance tab is highlighted", () => {
+      renderWithContext(
+        makeContext({
+          instances,
+          activeInstanceId: "prod",
+          route: { section: "tickets" } as any,
+        }),
+      );
+      const prodTab = screen.getByText("Production").closest("button")!;
+      expect(prodTab.className).toContain("text-on-surface");
+      const devTab = screen.getByText("Development").closest("button")!;
+      expect(devTab.className).toContain("text-on-surface-variant");
+    });
+
+    it("single instance renders regular Tickets tab", () => {
+      const singleInstance = [{ id: "default", name: "Redmine", url: "", order: 0 }];
+      renderWithContext(makeContext({ instances: singleInstance }));
+      expect(screen.getByText(/tickets/i)).toBeInTheDocument();
+      expect(screen.queryByText("Redmine")).not.toBeInTheDocument();
+    });
   });
 });

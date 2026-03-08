@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 
 export interface AppRoute {
   section: "tickets" | "timelog" | "overview";
+  instanceId?: string;
   year?: number;
   month?: number; // 0-indexed (JS Date convention)
   day?: number;
@@ -38,14 +39,23 @@ export function parseHash(hash: string): AppRoute {
 
   if (parts[0] === "overview") return { section: "overview" };
 
-  if (parts[0] === "tickets") return { section: "tickets" };
+  if (parts[0] === "tickets") {
+    // #/tickets or #/tickets/:instanceId
+    const route: AppRoute = { section: "tickets" };
+    if (parts[1]) route.instanceId = parts[1];
+    return route;
+  }
 
   return DEFAULT_ROUTE;
 }
 
 export function buildHash(route: Partial<AppRoute>): string {
   const section = route.section ?? "tickets";
-  if (section === "tickets") return "#/tickets";
+
+  if (section === "tickets") {
+    return route.instanceId ? `#/tickets/${route.instanceId}` : "#/tickets";
+  }
+
   if (section === "overview") return "#/overview";
 
   const now = new Date();
@@ -86,15 +96,16 @@ export function useHashRouter() {
 
   const navigate = useCallback((partial: Partial<AppRoute>) => {
     const current = routeRef.current;
-    // Merge with current route for same-section updates
     const merged: AppRoute = { ...current, ...partial };
 
-    // When switching sections, reset sub-state
     if (partial.section && partial.section !== current.section) {
       merged.year = partial.year;
       merged.month = partial.month;
       merged.day = partial.day;
       merged.tab = partial.tab;
+      if (partial.section !== "tickets") {
+        merged.instanceId = undefined;
+      }
     }
 
     const hash = buildHash(merged);

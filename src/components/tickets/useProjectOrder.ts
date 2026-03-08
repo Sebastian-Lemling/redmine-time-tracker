@@ -3,11 +3,10 @@ import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { safeGet, safeSet } from "../../lib/storage";
 
-const STORAGE_KEY = "ticket-project-order";
-
-export function useProjectOrder(allProjectNames: string[]) {
+export function useProjectOrder(allProjectNames: string[], instanceId: string) {
+  const storageKey = `ticket-project-order-${instanceId}`;
   const [projectOrder, setProjectOrder] = useState<string[]>(() =>
-    safeGet<string[]>(STORAGE_KEY, []),
+    safeGet<string[]>(storageKey, []),
   );
 
   useEffect(() => {
@@ -26,9 +25,9 @@ export function useProjectOrder(allProjectNames: string[]) {
 
   useEffect(() => {
     if (projectOrder.length > 0) {
-      safeSet(STORAGE_KEY, projectOrder);
+      safeSet(storageKey, projectOrder);
     }
-  }, [projectOrder]);
+  }, [projectOrder, storageKey]);
 
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   const collapsedBeforeDrag = useRef<Record<string, boolean>>({});

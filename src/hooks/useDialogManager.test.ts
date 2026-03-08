@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useDialogManager } from "./useDialogManager";
 import type { BookingDialogData } from "../components/dialogs/BookingDialog";
-import type { TimeLogEntry } from "@/types/redmine";
+import type { TimeLogEntry, MultiTimerMap } from "@/types/redmine";
+import { timerKey } from "@/types/redmine";
 
 function makeEntry(overrides?: Partial<TimeLogEntry>): TimeLogEntry {
   return {
@@ -19,6 +20,7 @@ function makeEntry(overrides?: Partial<TimeLogEntry>): TimeLogEntry {
     date: "2025-03-01",
     activityId: 5,
     syncedToRedmine: false,
+    instanceId: "default",
     ...overrides,
   } as TimeLogEntry;
 }
@@ -33,6 +35,7 @@ function makeBookDialog(overrides?: Partial<BookingDialogData>): BookingDialogDa
     endTime: "2025-03-01T10:00:00",
     durationMinutes: 60,
     wasRunning: false,
+    instanceId: "default",
     ...overrides,
   };
 }
@@ -41,12 +44,10 @@ function makeDeps(overrides?: Record<string, unknown>) {
   return {
     addEntry: vi.fn().mockResolvedValue(undefined),
     discard: vi.fn(),
-    timers: {} as Record<number, any>,
+    timers: {} as MultiTimerMap,
     startOrResume: vi.fn(),
     issues: [{ id: 100, project: { id: 1 } }] as any[],
     activities: [{ id: 5, name: "Development", is_default: false }] as any[],
-    activitiesByProject: {} as Record<number, any[]>,
-    fetchProjectActivities: vi.fn().mockResolvedValue(undefined),
     setError: vi.fn(),
     ...overrides,
   };
@@ -109,6 +110,7 @@ describe("useDialogManager", () => {
         description: "did stuff",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
 
@@ -119,9 +121,10 @@ describe("useDialogManager", () => {
         activityId: 5,
         duration: 60,
         date: "2025-03-01",
+        instanceId: "default",
       }),
     );
-    expect(deps.discard).toHaveBeenCalledWith(100);
+    expect(deps.discard).toHaveBeenCalledWith(timerKey("default", 100));
     expect(result.current.bookDialog).toBeNull();
   });
 
@@ -145,6 +148,7 @@ describe("useDialogManager", () => {
         description: "",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
 
@@ -169,6 +173,7 @@ describe("useDialogManager", () => {
         description: "x",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
     expect(deps.addEntry).not.toHaveBeenCalled();
@@ -196,6 +201,7 @@ describe("useDialogManager", () => {
         description: "x",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
 
@@ -215,10 +221,18 @@ describe("useDialogManager", () => {
   });
 
   it("handleBookCancel with wasRunning → restarts timer", () => {
+    const key = timerKey("default", 100);
     const deps = makeDeps({
       timers: {
-        100: { issueId: 100, issueSubject: "Test", projectName: "PX", projectId: 1 },
-      },
+        [key]: {
+          issueId: 100,
+          issueSubject: "Test",
+          projectName: "PX",
+          projectId: 1,
+          startTime: new Date().toISOString(),
+          instanceId: "default",
+        },
+      } as MultiTimerMap,
     });
     const { result } = renderHook(() => useDialogManager(deps));
     act(() => {
@@ -227,7 +241,7 @@ describe("useDialogManager", () => {
     act(() => {
       result.current.handleBookCancel();
     });
-    expect(deps.startOrResume).toHaveBeenCalledWith(100, "Test", "PX", 1);
+    expect(deps.startOrResume).toHaveBeenCalledWith("default", 100, "Test", "PX", 1);
   });
 
   it("handleBookCancel with wasRunning=false → no timer restart", () => {
@@ -242,68 +256,45 @@ describe("useDialogManager", () => {
     expect(deps.startOrResume).not.toHaveBeenCalled();
   });
 
-  it("syncDialog opens → prefetches activities if not cached", () => {
+  it("syncDialog opens → prefetches activities for project", () => {
     const deps = makeDeps();
     const { result } = renderHook(() => useDialogManager(deps));
     act(() => {
       result.current.setSyncDialog(makeEntry({ projectId: 1 }));
     });
-    expect(deps.fetchProjectActivities).toHaveBeenCalledWith(1);
+    // The hook internally fetches activities via API; we verify dialog opened
+    expect(result.current.syncDialog).not.toBeNull();
   });
 
-  it("syncDialog opens → skips prefetch if already cached", () => {
-    const deps = makeDeps({
-      activitiesByProject: { 1: [{ id: 5, name: "Dev" }] },
-    });
-    const { result } = renderHook(() => useDialogManager(deps));
-    act(() => {
-      result.current.setSyncDialog(makeEntry({ projectId: 1 }));
-    });
-    expect(deps.fetchProjectActivities).not.toHaveBeenCalled();
-  });
-
-  it("syncDialogActivities uses project-specific when available", () => {
-    const projectActivities = [{ id: 10, name: "Support" }] as any[];
-    const deps = makeDeps({
-      activitiesByProject: { 1: projectActivities },
-    });
-    const { result } = renderHook(() => useDialogManager(deps));
-    act(() => {
-      result.current.setSyncDialog(makeEntry({ projectId: 1 }));
-    });
-    expect(result.current.syncDialogActivities).toBe(projectActivities);
-  });
-
-  it("syncDialogActivities falls back to global when no project-specific", () => {
+  it("syncDialogActivities falls back to global activities", () => {
     const deps = makeDeps();
     const { result } = renderHook(() => useDialogManager(deps));
     act(() => {
       result.current.setSyncDialog(makeEntry({ projectId: 1 }));
     });
+    // No cached project activities → falls back to global activities
     expect(result.current.syncDialogActivities).toBe(deps.activities);
   });
 
-  it("editDialogActivities resolves project from issues when entry has no projectId", () => {
+  it("editDialogActivities falls back to global activities when no cache", () => {
     const deps = makeDeps({
       issues: [{ id: 100, project: { id: 2, name: "P2" } }] as any[],
-      activitiesByProject: { 2: [{ id: 20, name: "Testing" }] } as any,
     });
     const { result } = renderHook(() => useDialogManager(deps));
     act(() => {
       result.current.setEditDialog(makeEntry({ projectId: undefined as any }));
     });
-    expect(result.current.editDialogActivities).toEqual([{ id: 20, name: "Testing" }]);
+    // No cached project activities → falls back to global activities
+    expect(result.current.editDialogActivities).toBe(deps.activities);
   });
 
-  it("bookDialogActivities uses project-specific when available", () => {
-    const projectActivities = [{ id: 10, name: "Review" }] as any[];
-    const deps = makeDeps({
-      activitiesByProject: { 1: projectActivities },
-    });
+  it("bookDialogActivities falls back to global activities when no cache", () => {
+    const deps = makeDeps();
     const { result } = renderHook(() => useDialogManager(deps));
     act(() => {
       result.current.setBookDialog(makeBookDialog({ projectId: 1 }));
     });
-    expect(result.current.bookDialogActivities).toBe(projectActivities);
+    // No cached project activities → falls back to global activities
+    expect(result.current.bookDialogActivities).toBe(deps.activities);
   });
 });

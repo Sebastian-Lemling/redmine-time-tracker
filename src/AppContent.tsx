@@ -1,82 +1,69 @@
-import { TicketList, SearchPanel } from "./components/tickets";
+import { InstanceTicketView } from "./components/tickets";
 import { TimeLogSection, WeekView } from "./components/timelog";
 import { ErrorBoundary } from "./components/ui";
 import type { AppRoute } from "./hooks/useHashRouter";
 import type {
   RedmineIssue,
   RedmineActivity,
-  RedmineStatus,
-  RedmineTracker,
-  RedmineMember,
-  RedmineVersion,
   RedmineTimeEntry,
-  RedmineJournal,
   TimeLogEntry,
   MultiTimerMap,
+  ActiveTimerKey,
+  TimerKey,
 } from "./types/redmine";
+import type { SaveResult } from "./hooks/useMultiTimer";
+import type { BookingDialogData } from "./components/dialogs/BookingDialog";
 
 interface Props {
   activeSection: "tickets" | "timelog" | "overview";
   route: AppRoute;
   navigate: (partial: Partial<AppRoute>) => void;
-  mergedIssues: RedmineIssue[];
-  assignedIdSet: Set<number>;
-  assignedIssues: RedmineIssue[];
-  issues: RedmineIssue[];
-  pinnedIds: Set<number>;
-  pinnedIssues: RedmineIssue[];
+  activeInstanceId: string;
 
-  onTogglePin: (issue: RedmineIssue) => void;
-  onToggleAssignedPin: (issue: RedmineIssue) => void;
-  favoriteIds: Set<number>;
-  favoriteIssues: RedmineIssue[];
-  onToggleFavorite: (issue: RedmineIssue) => void;
+  // Shared timer state
   timers: MultiTimerMap;
-  activeId: number | null;
-  elapsedMap: Record<number, number>;
+  activeTimerKey: ActiveTimerKey;
+  elapsedMap: Record<TimerKey, number>;
   onPause: () => void;
-  onDiscard: (issueId: number) => void;
-  onAdjust: (issueId: number, deltaMs: number) => void;
-  loading: boolean;
+  startOrResume: (
+    instanceId: string,
+    issueId: number,
+    subject: string,
+    projectName: string,
+    projectId?: number,
+  ) => void;
+  capture: (key: TimerKey) => SaveResult | null;
+  discard: (key: TimerKey) => void;
+  adjustElapsed: (key: TimerKey, deltaSec: number) => void;
+
+  // Dialog / UI setters
+  setBookDialog: (data: BookingDialogData | null) => void;
+  showSnackbar: (msg: string) => void;
+
+  // Refresh
+  refreshTrigger: number;
+  onRefreshComplete: (changed: boolean, changedCount: number) => void;
+
+  // Timelog props
+  entries: TimeLogEntry[];
   activities: RedmineActivity[];
   activitiesByProject: Record<number, RedmineActivity[]>;
-  statuses: RedmineStatus[];
-  trackers: RedmineTracker[];
-  trackersByProject: Record<number, RedmineTracker[]>;
-  allowedStatusesByIssue: Record<number, RedmineStatus[]>;
-  membersByProject: Record<number, RedmineMember[]>;
-  versionsByProject: Record<number, RedmineVersion[]>;
-  redmineUrl: string;
-  issueDescriptions: Record<number, string>;
-  issueComments: Record<number, RedmineJournal[]>;
-  issueSubjects: Record<number, string>;
-  remoteEntries: RedmineTimeEntry[];
-  remoteLoading: boolean;
   onFetchProjectActivities: (projectId: number) => Promise<void>;
-  onFetchProjectTrackers: (projectId: number) => Promise<void>;
-  onFetchAllowedStatuses: (issueId: number) => Promise<void>;
-  onFetchMembers: (projectId: number) => Promise<void>;
-  onFetchVersions: (projectId: number) => Promise<void>;
-  onFetchIssueDescription: (issueId: number) => Promise<void>;
-  fetchIssueSubject: (issueId: number) => Promise<void>;
-  fetchRemoteEntries: (from: string, to: string, force?: boolean) => Promise<void>;
-  refreshRemoteEntries: () => void;
-  onStatusChange: (issueId: number, statusId: number) => Promise<void>;
-  onTrackerChange: (issueId: number, trackerId: number) => Promise<void>;
-  onAssigneeChange: (issueId: number, assigneeId: number) => Promise<void>;
-  onVersionChange: (issueId: number, versionId: number) => Promise<void>;
-  onDoneRatioChange: (issueId: number, doneRatio: number) => Promise<void>;
-  onPlay: (issue: RedmineIssue) => void;
-  onSave: (issueId: number) => void;
-  onOpenBookDialog: (issue: RedmineIssue) => void;
-  onDelete: (id: string) => void;
-  onUpdateDuration: (id: string, duration: number) => Promise<void>;
-  onUpdateActivity: (id: string, activityId: number) => Promise<void>;
   onSyncEntry: (entryId: string, activityId: number) => Promise<void>;
   onOpenSyncDialog: (entry: TimeLogEntry) => void;
   onEditEntry: (entry: TimeLogEntry) => void;
-  entries: TimeLogEntry[];
+  onDelete: (id: string) => void;
+  onUpdateDuration: (id: string, duration: number) => Promise<void>;
+  onUpdateActivity: (id: string, activityId: number) => Promise<void>;
   onShowMessage: (msg: string) => void;
+  remoteEntries: RedmineTimeEntry[];
+  remoteLoading: boolean;
+  fetchRemoteEntries: (from: string, to: string, force?: boolean) => Promise<void>;
+  refreshRemoteEntries: () => void;
+  issues: RedmineIssue[];
+  issueSubjects: Record<number, string>;
+  fetchIssueSubject: (issueId: number) => Promise<void>;
+  redmineUrl: string;
 }
 
 export default function AppContent(props: Props) {
@@ -87,73 +74,24 @@ export default function AppContent(props: Props) {
       className={`min-h-0 flex-1 overflow-hidden px-4 pt-3 pb-3 bg-surface-container-low${activeSection === "tickets" ? " flex" : ""}`}
     >
       {activeSection === "tickets" && (
-        <>
-          <div className="ticket-panel--left">
-            <ErrorBoundary>
-              <TicketList
-                issues={props.mergedIssues}
-                pinnedIds={props.pinnedIds}
-                timers={props.timers}
-                activeId={props.activeId}
-                elapsedMap={props.elapsedMap}
-                loading={props.loading}
-                statuses={props.statuses}
-                trackers={props.trackers}
-                trackersByProject={props.trackersByProject}
-                allowedStatusesByIssue={props.allowedStatusesByIssue}
-                onFetchProjectTrackers={props.onFetchProjectTrackers}
-                onFetchAllowedStatuses={props.onFetchAllowedStatuses}
-                membersByProject={props.membersByProject}
-                versionsByProject={props.versionsByProject}
-                redmineUrl={props.redmineUrl}
-                onStatusChange={props.onStatusChange}
-                onTrackerChange={props.onTrackerChange}
-                onAssigneeChange={props.onAssigneeChange}
-                onVersionChange={props.onVersionChange}
-                onDoneRatioChange={props.onDoneRatioChange}
-                onFetchMembers={props.onFetchMembers}
-                onFetchVersions={props.onFetchVersions}
-                onPlay={props.onPlay}
-                onPause={props.onPause}
-                onSave={props.onSave}
-                onDiscard={props.onDiscard}
-                onAdjust={props.onAdjust}
-                onOpenBookDialog={props.onOpenBookDialog}
-                issueDescriptions={props.issueDescriptions}
-                issueComments={props.issueComments}
-                onFetchIssueDescription={props.onFetchIssueDescription}
-                onTogglePin={props.onTogglePin}
-                favoriteIds={props.favoriteIds}
-                favoriteIssues={props.favoriteIssues}
-                onToggleFavorite={props.onToggleFavorite}
-              />
-            </ErrorBoundary>
-          </div>
-          <div className="ticket-panel--right">
-            <ErrorBoundary>
-              <SearchPanel
-                pinnedIds={props.pinnedIds}
-                pinnedIssues={props.pinnedIssues}
-                assignedIds={props.assignedIdSet}
-                assignedIssues={props.assignedIssues}
-                onTogglePin={props.onTogglePin}
-                onToggleAssignedPin={props.onToggleAssignedPin}
-                statuses={props.statuses}
-                trackers={props.trackers}
-                redmineUrl={props.redmineUrl}
-                membersByProject={props.membersByProject}
-                versionsByProject={props.versionsByProject}
-                onFetchMembers={props.onFetchMembers}
-                onFetchVersions={props.onFetchVersions}
-                favoriteIssues={props.favoriteIssues}
-                favoriteIds={props.favoriteIds}
-                onToggleFavorite={props.onToggleFavorite}
-                onOpenBookDialog={props.onOpenBookDialog}
-                onShowMessage={props.onShowMessage}
-              />
-            </ErrorBoundary>
-          </div>
-        </>
+        <ErrorBoundary>
+          <InstanceTicketView
+            key={props.activeInstanceId}
+            instanceId={props.activeInstanceId}
+            timers={props.timers}
+            activeTimerKey={props.activeTimerKey}
+            elapsedMap={props.elapsedMap}
+            onPause={props.onPause}
+            startOrResume={props.startOrResume}
+            capture={props.capture}
+            discard={props.discard}
+            adjustElapsed={props.adjustElapsed}
+            setBookDialog={props.setBookDialog}
+            showSnackbar={props.showSnackbar}
+            refreshTrigger={props.refreshTrigger}
+            onRefreshComplete={props.onRefreshComplete}
+          />
+        </ErrorBoundary>
       )}
       {activeSection === "timelog" && (
         <ErrorBoundary>

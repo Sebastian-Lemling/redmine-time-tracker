@@ -19,7 +19,6 @@ import type {
   RedmineVersion,
   RedmineJournal,
   MultiTimerMap,
-  ActiveTimerId,
 } from "../../types/redmine";
 import { TicketListToolbar } from "./TicketListToolbar";
 import { DragOverlayHeader } from "./ProjectGroupHeader";
@@ -31,9 +30,10 @@ import { ActiveTimer } from "../timelog";
 import { useI18n } from "../../i18n/I18nContext";
 
 interface Props {
+  instanceId: string;
   issues: RedmineIssue[];
   timers: MultiTimerMap;
-  activeId: ActiveTimerId;
+  activeId: number | null;
   elapsedMap: Record<number, number>;
   loading: boolean;
   statuses: RedmineStatus[];
@@ -69,6 +69,7 @@ interface Props {
 }
 
 export function TicketList({
+  instanceId,
   issues,
   timers,
   activeId,
@@ -109,7 +110,7 @@ export function TicketList({
   const [searchQuery, setSearchQuery] = useState("");
   const [showTrackedOnly, setShowTrackedOnly] = useState(false);
   const [showFavoritesGroup, setShowFavoritesGroup] = useState(() =>
-    safeGet("show-favorites-group", false),
+    safeGet(`show-favorites-group-${instanceId}`, false),
   );
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -122,13 +123,15 @@ export function TicketList({
     favoriteIds,
     favoriteIssues,
   });
-  const { projectOrder, dragActiveId, handleDragStart, handleDragEnd } =
-    useProjectOrder(allProjectNames);
+  const { projectOrder, dragActiveId, handleDragStart, handleDragEnd } = useProjectOrder(
+    allProjectNames,
+    instanceId,
+  );
   const {
     enabledProjects,
     toggle: toggleProject,
     toggleAll: toggleAllProjects,
-  } = useEnabledProjects(allProjectNames);
+  } = useEnabledProjects(allProjectNames, instanceId);
 
   const filteredProjectNames = useMemo(() => {
     if (showFavoritesGroup) {
@@ -234,7 +237,7 @@ export function TicketList({
           showFavoritesOnly={showFavoritesGroup}
           onToggleFavoritesOnly={() =>
             setShowFavoritesGroup((v) => {
-              safeSet("show-favorites-group", !v);
+              safeSet(`show-favorites-group-${instanceId}`, !v);
               return !v;
             })
           }

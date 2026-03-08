@@ -14,6 +14,7 @@ import { FilterChipBar } from "./FilterChipBar";
 import { PinnedPreview } from "./PinnedPreview";
 
 interface Props {
+  instanceId?: string;
   pinnedIds: Set<number>;
   pinnedIssues: RedmineIssue[];
   assignedIds: Set<number>;
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function SearchPanel({
+  instanceId,
   pinnedIds,
   pinnedIssues,
   assignedIds,
@@ -55,7 +57,7 @@ export function SearchPanel({
   onShowMessage,
 }: Props) {
   const { t } = useI18n();
-  const search = useIssueSearch();
+  const search = useIssueSearch(instanceId);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchActive, setSearchActive] = useState(false);
 
@@ -165,8 +167,11 @@ export function SearchPanel({
                 value={search.params.q || ""}
                 onChange={(e) => search.setParam("q", e.target.value)}
                 onFocus={() => setSearchActive(true)}
-                onBlur={() => {
-                  if (!search.params.q && !search.hasActiveFilters) setSearchActive(false);
+                onBlur={(e) => {
+                  if (search.params.q || search.hasActiveFilters) return;
+                  const panel = e.currentTarget.closest(".search-panel");
+                  if (panel && e.relatedTarget && panel.contains(e.relatedTarget)) return;
+                  setSearchActive(false);
                 }}
               />
               {isSearchMode ? (

@@ -12,10 +12,10 @@ const PROJECT_COLORS = [
   "#a142f4",
   "#d93025",
   "#007b83",
-  "#c5221f",
+  "#f6bf26",
   "#1e8e3e",
-  "#9334e6",
-  "#e37400",
+  "#795548",
+  "#3f51b5",
 ];
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -81,6 +81,8 @@ interface Props {
   syncing: boolean;
   activities: RedmineActivity[];
   redmineUrl: string;
+  instanceName?: string;
+  instanceColor?: string;
   onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -94,6 +96,8 @@ export function DayDetailEntry({
   syncing,
   activities,
   redmineUrl,
+  instanceName,
+  instanceColor,
   onToggleSelect,
   onEdit,
   onDelete,
@@ -103,9 +107,9 @@ export function DayDetailEntry({
   const { t } = useI18n();
   const isUnsynced = !entry.syncedToRedmine;
   const atMin = entry.duration <= DURATION_MIN_MINUTES;
-  const activityName = entry.activityId
-    ? activities.find((a) => a.id === entry.activityId)?.name
-    : undefined;
+  const activityName =
+    entry.activityName ||
+    (entry.activityId ? activities.find((a) => a.id === entry.activityId)?.name : undefined);
 
   return (
     <div
@@ -115,7 +119,7 @@ export function DayDetailEntry({
       <div className="de-card__row1">
         <div
           className="de-card__project-bar"
-          style={{ backgroundColor: getProjectColor(entry.projectName) }}
+          style={{ backgroundColor: instanceColor || getProjectColor(entry.projectName) }}
         />
         {isUnsynced && (
           <div
@@ -143,6 +147,16 @@ export function DayDetailEntry({
           <div className="de-card__title">{entry.issueSubject}</div>
           <div className="de-card__meta">
             <IssueBadge issueId={entry.issueId} redmineUrl={redmineUrl} />
+            {instanceName && (
+              <span
+                className="de-card__meta-chip de-card__meta-instance"
+                style={{
+                  backgroundColor: `color-mix(in srgb, ${instanceColor ?? getProjectColor(entry.projectName)} 60%, transparent)`,
+                }}
+              >
+                {instanceName}
+              </span>
+            )}
             <span className="de-card__meta-chip de-card__meta-project">{entry.projectName}</span>
             {activityName && (
               <span className="de-card__meta-chip de-card__meta-activity">{activityName}</span>

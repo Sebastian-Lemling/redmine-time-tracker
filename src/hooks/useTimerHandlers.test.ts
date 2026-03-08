@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTimerHandlers } from "@/hooks/useTimerHandlers";
 import type { RedmineIssue } from "@/types/redmine";
+import { timerKey } from "@/types/redmine";
+
+const DI = "default";
 
 describe("useTimerHandlers", () => {
   const issue: RedmineIssue = {
@@ -18,6 +21,7 @@ describe("useTimerHandlers", () => {
     const startOrResume = vi.fn();
     const { result } = renderHook(() =>
       useTimerHandlers({
+        instanceId: DI,
         activeId: null,
         startOrResume,
         capture: vi.fn(),
@@ -27,7 +31,7 @@ describe("useTimerHandlers", () => {
     act(() => {
       result.current.handlePlay(issue);
     });
-    expect(startOrResume).toHaveBeenCalledWith(42, "Test ticket", "TestProject", 1);
+    expect(startOrResume).toHaveBeenCalledWith(DI, 42, "Test ticket", "TestProject", 1);
   });
 
   it("handleSave captures timer and opens BookingDialog", () => {
@@ -39,11 +43,14 @@ describe("useTimerHandlers", () => {
       durationMinutes: 30,
       startTime: "2025-03-01T09:00:00",
       endTime: "2025-03-01T09:30:00",
+      instanceId: DI,
     });
     const setBookDialog = vi.fn();
+    const key42 = timerKey(DI, 42);
     const { result } = renderHook(() =>
       useTimerHandlers({
-        activeId: 42,
+        instanceId: DI,
+        activeId: key42,
         startOrResume: vi.fn(),
         capture,
         setBookDialog,
@@ -52,7 +59,7 @@ describe("useTimerHandlers", () => {
     act(() => {
       result.current.handleSave(42);
     });
-    expect(capture).toHaveBeenCalledWith(42);
+    expect(capture).toHaveBeenCalledWith(key42);
     expect(setBookDialog).toHaveBeenCalledWith(
       expect.objectContaining({
         issueId: 42,
@@ -72,11 +79,13 @@ describe("useTimerHandlers", () => {
       durationMinutes: 15,
       startTime: "2025-03-01T09:00:00",
       endTime: "2025-03-01T09:15:00",
+      instanceId: DI,
     });
     const setBookDialog = vi.fn();
     const { result } = renderHook(() =>
       useTimerHandlers({
-        activeId: 99,
+        instanceId: DI,
+        activeId: timerKey(DI, 99),
         startOrResume: vi.fn(),
         capture,
         setBookDialog,
@@ -97,6 +106,7 @@ describe("useTimerHandlers", () => {
     const setBookDialog = vi.fn();
     const { result } = renderHook(() =>
       useTimerHandlers({
+        instanceId: DI,
         activeId: null,
         startOrResume: vi.fn(),
         capture,
@@ -113,6 +123,7 @@ describe("useTimerHandlers", () => {
     const setBookDialog = vi.fn();
     const { result } = renderHook(() =>
       useTimerHandlers({
+        instanceId: DI,
         activeId: null,
         startOrResume: vi.fn(),
         capture: vi.fn(),
@@ -128,6 +139,7 @@ describe("useTimerHandlers", () => {
       projectId: 1,
       projectName: "TestProject",
       doneRatio: 0,
+      instanceId: DI,
     });
   });
 });

@@ -1,12 +1,14 @@
 import { platform } from "os";
 import { execFileSync } from "child_process";
-import { existsSync, readFileSync, writeFileSync, chmodSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVICE_NAME = "redmine-tracker";
 const ENV_FILE = join(__dirname, "..", ".env");
+const DATA_DIR = join(__dirname, "..", "data");
+const INSTANCES_FILE = join(DATA_DIR, "instances.json");
 
 // --- OS-native keystore ---
 
@@ -59,7 +61,6 @@ function getFromKeystore(key) {
       return macGet(key);
     case "linux":
       return linuxGet(key);
-    // Windows: DPAPI via PowerShell could be added here
     default:
       return null;
   }
@@ -131,6 +132,14 @@ const ENV_MAP = {
   "redmine-api-key": "REDMINE_API_KEY",
 };
 
+function envKeyForInstance(baseKey, instanceId) {
+  const envBase = ENV_MAP[baseKey];
+  if (!envBase) return null;
+  if (instanceId === "default") return envBase;
+  const suffix = instanceId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+  return `${envBase}_${suffix}`;
+}
+
 // --- Public API ---
 
 export function get(key) {
@@ -151,13 +160,60 @@ export function get(key) {
   return null;
 }
 
+export function getForInstance(baseKey, instanceId) {
+  const instanceKey = `${baseKey}-${instanceId}`;
+
+  // 1. OS keystore with instance suffix
+  const osValue = getFromKeystore(instanceKey);
+  if (osValue) return osValue;
+
+  // 2. Fall back to legacy key for "default" instance
+  if (instanceId === "default") {
+    const legacyValue = getFromKeystore(baseKey);
+    if (legacyValue) return legacyValue;
+  }
+
+  // 3. Environment variable
+  const envKey = envKeyForInstance(baseKey, instanceId);
+  if (envKey && process.env[envKey]) return process.env[envKey];
+
+  // 4. .env file
+  if (envKey) {
+    const dotenv = parseDotenv();
+    if (dotenv[envKey]) return dotenv[envKey];
+  }
+
+  // 5. Fall back to legacy env var for "default"
+  if (instanceId === "default") {
+    const legacyEnvKey = ENV_MAP[baseKey];
+    if (legacyEnvKey && process.env[legacyEnvKey]) return process.env[legacyEnvKey];
+    if (legacyEnvKey) {
+      const dotenv = parseDotenv();
+      if (dotenv[legacyEnvKey]) return dotenv[legacyEnvKey];
+    }
+  }
+
+  return null;
+}
+
 export function set(key, value) {
   try {
     setInKeystore(key, value);
   } catch {
-    // Keystore not available → .env fallback
     const envKey = ENV_MAP[key];
     if (!envKey) throw new Error(`Unknown credential key: ${key}`);
+    writeDotenv(envKey, value);
+    console.warn(`  Warning: Stored in .env (plaintext). Prefer OS keystore.`);
+  }
+}
+
+export function setForInstance(baseKey, instanceId, value) {
+  const instanceKey = `${baseKey}-${instanceId}`;
+  try {
+    setInKeystore(instanceKey, value);
+  } catch {
+    const envKey = envKeyForInstance(baseKey, instanceId);
+    if (!envKey) throw new Error(`Unknown credential key: ${baseKey}`);
     writeDotenv(envKey, value);
     console.warn(`  Warning: Stored in .env (plaintext). Prefer OS keystore.`);
   }
@@ -168,4 +224,63 @@ export function sanitize(message) {
   const apiKey = get("redmine-api-key");
   if (!apiKey || apiKey.length < 8) return message;
   return message.replace(new RegExp(apiKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "***");
+}
+
+// --- Instance management ---
+
+export function loadInstances() {
+  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+  if (existsSync(INSTANCES_FILE)) {
+    try {
+      const raw = readFileSync(INSTANCES_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {
+      /* fall through to migration */
+    }
+  }
+
+  // Migration: check if legacy single-instance credentials exist
+  const legacyUrl = get("redmine-url");
+  const legacyKey = get("redmine-api-key");
+  if (legacyUrl && legacyKey) {
+    const instance = {
+      id: "default",
+      name: "Redmine",
+      url: legacyUrl.replace(/\/$/, ""),
+      order: 0,
+    };
+    saveInstances([instance]);
+    // Store credentials with instance suffix for consistency
+    try {
+      setForInstance("redmine-url", "default", legacyUrl.replace(/\/$/, ""));
+      setForInstance("redmine-api-key", "default", legacyKey);
+    } catch {
+      /* legacy keys still work as fallback */
+    }
+    return [instance];
+  }
+
+  return [];
+}
+
+export function saveInstances(instances) {
+  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+  writeFileSync(INSTANCES_FILE, JSON.stringify(instances, null, 2));
+}
+
+export function getInstanceConfig(instanceId, instances) {
+  const instance = instances.find((i) => i.id === instanceId);
+  if (!instance) return null;
+
+  const url = getForInstance("redmine-url", instanceId);
+  const apiKey = getForInstance("redmine-api-key", instanceId);
+  if (!url || !apiKey) return null;
+
+  return {
+    id: instance.id,
+    name: instance.name,
+    baseUrl: url.replace(/\/$/, ""),
+    apiKey,
+  };
 }

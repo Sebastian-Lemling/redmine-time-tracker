@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import type {
   TimeLogEntry as TEntry,
   RedmineActivity,
@@ -7,6 +7,8 @@ import type {
 } from "../../types/redmine";
 import type { AppRoute } from "../../hooks/useHashRouter";
 import { formatDateKey } from "../../lib/dates";
+import { api } from "../../lib/api";
+import { logger } from "../../lib/logger";
 import { MonthCalendar } from "./MonthCalendar";
 import { DayDetailPanel } from "./DayDetailPanel";
 import { MonthViewFooter } from "./MonthViewFooter";
@@ -41,7 +43,7 @@ export function MonthView({
   entries,
   activities,
   activitiesByProject,
-  onFetchProjectActivities,
+  onFetchProjectActivities: _onFetchProjectActivities, // eslint-disable-line @typescript-eslint/no-unused-vars
   onSyncEntry,
   onOpenSyncDialog: _onOpenSyncDialog, // eslint-disable-line @typescript-eslint/no-unused-vars
   onEdit,
@@ -162,29 +164,6 @@ export function MonthView({
     return map;
   }, [entries, year, month]);
 
-  const entryCountByDate = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const e of entries) {
-      if (e.syncedToRedmine) continue;
-      const d = new Date(e.date + "T00:00:00");
-      if (d.getFullYear() === year && d.getMonth() === month) map[e.date] = (map[e.date] || 0) + 1;
-    }
-    for (const re of remoteEntriesForMonth) map[re.spent_on] = (map[re.spent_on] || 0) + 1;
-    return map;
-  }, [entries, remoteEntriesForMonth, year, month]);
-
-  const heatQuartiles = useMemo(() => {
-    const counts = Object.values(entryCountByDate)
-      .filter((c) => c > 0)
-      .sort((a, b) => a - b);
-    if (counts.length === 0) return [0, 0, 0, 0];
-    const q = (p: number) => {
-      const idx = Math.ceil(p * counts.length) - 1;
-      return counts[Math.max(0, idx)];
-    };
-    return [q(0.25), q(0.5), q(0.75), q(1)];
-  }, [entryCountByDate]);
-
   const totalMinutes = useMemo(
     () => Object.values(minutesByDate).reduce((a, b) => a + b, 0),
     [minutesByDate],
@@ -225,13 +204,70 @@ export function MonthView({
   );
   const selectedDayMinutes = unsyncedMinutes + syncedMinutes;
 
+  const [instanceActivityCache, setInstanceActivityCache] = useState<
+    Record<string, RedmineActivity[]>
+  >({});
+  const fetchingActivitiesRef = useRef(new Set<string>());
+
   useEffect(() => {
-    const projectIds = new Set<number>();
+    let cancelled = false;
+    const controllers: AbortController[] = [];
+
     for (const e of selectedDayEntries) {
-      if (e.projectId && !activitiesByProject[e.projectId]) projectIds.add(e.projectId);
+      if (!e.projectId) continue;
+      if (activitiesByProject[e.projectId]?.length) continue;
+      const inst = e.instanceId || "default";
+      const cacheKey = `${inst}:${e.projectId}`;
+      if (instanceActivityCache[cacheKey] || fetchingActivitiesRef.current.has(cacheKey)) continue;
+      fetchingActivitiesRef.current.add(cacheKey);
+      const controller = new AbortController();
+      controllers.push(controller);
+      api<{ time_entry_activities: RedmineActivity[] }>(
+        `/api/i/${inst}/projects/${e.projectId}/activities`,
+        { signal: controller.signal },
+      )
+        .then((data) => {
+          if (!cancelled) {
+            setInstanceActivityCache((prev) => ({
+              ...prev,
+              [cacheKey]: data.time_entry_activities || [],
+            }));
+          }
+        })
+        .catch((err) => {
+          if (!controller.signal.aborted) {
+            logger.warn(`Failed to fetch activities for ${cacheKey}`, { error: err });
+          }
+        })
+        .finally(() => fetchingActivitiesRef.current.delete(cacheKey));
     }
-    for (const pid of projectIds) onFetchProjectActivities(pid);
-  }, [selectedDayEntries, activitiesByProject, onFetchProjectActivities]);
+
+    return () => {
+      cancelled = true;
+      for (const c of controllers) c.abort();
+    };
+  }, [selectedDayEntries, activitiesByProject, instanceActivityCache]);
+
+  const mergedActivitiesByProject = useMemo(() => {
+    const merged: Record<number, RedmineActivity[]> = { ...activitiesByProject };
+    for (const e of selectedDayEntries) {
+      if (!e.projectId || merged[e.projectId]?.length) continue;
+      const cached = instanceActivityCache[`${e.instanceId || "default"}:${e.projectId}`];
+      if (cached?.length) merged[e.projectId] = cached;
+    }
+    return merged;
+  }, [activitiesByProject, instanceActivityCache, selectedDayEntries]);
+
+  const mergedActivities = useMemo(() => {
+    if (activities.length > 0) return activities;
+    const all = Object.values(instanceActivityCache).flat();
+    const seen = new Set<number>();
+    return all.filter((a) => {
+      if (seen.has(a.id)) return false;
+      seen.add(a.id);
+      return true;
+    });
+  }, [activities, instanceActivityCache]);
 
   const navigateMonth = (delta: number) => {
     let newMonth = month + delta;
@@ -294,8 +330,6 @@ export function MonthView({
             localMinsByDate={localMinsByDate}
             remoteMinsByDate={remoteMinsByDate}
             unsyncedByDate={unsyncedByDate}
-            entryCountByDate={entryCountByDate}
-            heatQuartiles={heatQuartiles}
             onSelectDay={(day, hasUnsynced, hasMins) =>
               navigate({ day, tab: !hasUnsynced && hasMins ? "synced" : "unsynced" })
             }
@@ -319,8 +353,8 @@ export function MonthView({
             syncedMinutes={syncedMinutes}
             selectedDayMinutes={selectedDayMinutes}
             remoteLoading={remoteLoading}
-            activities={activities}
-            activitiesByProject={activitiesByProject}
+            activities={mergedActivities}
+            activitiesByProject={mergedActivitiesByProject}
             issues={issues}
             issueSubjects={issueSubjects}
             redmineUrl={redmineUrl}

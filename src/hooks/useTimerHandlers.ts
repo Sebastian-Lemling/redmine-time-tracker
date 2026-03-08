@@ -1,29 +1,38 @@
 import { useCallback } from "react";
-import type { RedmineIssue } from "../types/redmine";
+import type { RedmineIssue, ActiveTimerKey, TimerKey } from "../types/redmine";
+import { timerKey } from "../types/redmine";
 import type { SaveResult } from "./useMultiTimer";
 import type { BookingDialogData } from "../components/dialogs/BookingDialog";
 
 interface Deps {
-  activeId: number | null;
-  startOrResume: (issueId: number, subject: string, projectName: string, projectId: number) => void;
-  capture: (issueId: number) => SaveResult | null;
+  instanceId: string;
+  activeId: ActiveTimerKey;
+  startOrResume: (
+    instanceId: string,
+    issueId: number,
+    subject: string,
+    projectName: string,
+    projectId?: number,
+  ) => void;
+  capture: (key: TimerKey) => SaveResult | null;
   setBookDialog: (dialog: BookingDialogData | null) => void;
 }
 
 export function useTimerHandlers(deps: Deps) {
-  const { activeId, startOrResume, capture, setBookDialog } = deps;
+  const { instanceId, activeId, startOrResume, capture, setBookDialog } = deps;
 
   const handlePlay = useCallback(
     (issue: RedmineIssue) => {
-      startOrResume(issue.id, issue.subject, issue.project.name, issue.project.id);
+      startOrResume(instanceId, issue.id, issue.subject, issue.project.name, issue.project.id);
     },
-    [startOrResume],
+    [instanceId, startOrResume],
   );
 
   const handleSave = useCallback(
     (issueId: number) => {
-      const wasRunning = activeId === issueId;
-      const result = capture(issueId);
+      const key = timerKey(instanceId, issueId);
+      const wasRunning = activeId === key;
+      const result = capture(key);
       if (result) {
         setBookDialog({
           issueId: result.issueId,
@@ -34,10 +43,11 @@ export function useTimerHandlers(deps: Deps) {
           startTime: result.startTime,
           endTime: result.endTime,
           wasRunning,
+          instanceId: result.instanceId,
         });
       }
     },
-    [capture, activeId, setBookDialog],
+    [instanceId, capture, activeId, setBookDialog],
   );
 
   const handleOpenBookDialog = useCallback(
@@ -48,9 +58,10 @@ export function useTimerHandlers(deps: Deps) {
         projectId: issue.project.id,
         projectName: issue.project.name,
         doneRatio: issue.done_ratio,
+        instanceId,
       });
     },
-    [setBookDialog],
+    [instanceId, setBookDialog],
   );
 
   return { handlePlay, handleSave, handleOpenBookDialog };

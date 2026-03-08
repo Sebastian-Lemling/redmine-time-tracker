@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { RedmineUser } from "./types/redmine";
+import type { RedmineUser, RedmineInstance } from "./types/redmine";
 import type { AppRoute } from "./hooks/useHashRouter";
 import type { ThemeMode } from "./hooks/useTheme";
 
@@ -16,9 +16,13 @@ export interface AppContextValue {
   loading: boolean;
   isRefreshing: boolean;
   onRefresh: () => void;
+  instances: RedmineInstance[];
+  activeInstanceId: string;
+  instanceColorMap: Record<string, string>;
 }
 
-const AppContext = createContext<AppContextValue | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components
+export const AppContext = createContext<AppContextValue | null>(null);
 
 export const AppProvider = AppContext.Provider;
 

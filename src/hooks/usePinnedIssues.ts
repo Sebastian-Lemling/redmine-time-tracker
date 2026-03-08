@@ -4,48 +4,45 @@ import { api } from "../lib/api";
 import { ApiError } from "../lib/errors";
 import { safeGet, safeSet } from "../lib/storage";
 
-const STORAGE_KEY = "pinned-issue-ids";
-const CACHE_KEY = "pinned-issue-cache";
-const RECENT_PINS_KEY = "recent-pinned-issues";
-const HIDDEN_ASSIGNED_KEY = "hidden-assigned-ids";
-const AUTO_PIN_KEY = "auto-pinned-ids";
-const AUTO_PIN_MIGRATION_KEY = "auto-pin-migration-done";
-const MIGRATION_KEY = "pin-migration-done";
 const MAX_RECENT = 10;
 
-function loadIds(): Set<number> {
-  const arr = safeGet<unknown[]>(STORAGE_KEY, []);
+function storageKey(base: string, instanceId?: string): string {
+  return instanceId ? `${base}-${instanceId}` : base;
+}
+
+function loadIds(instanceId?: string): Set<number> {
+  const arr = safeGet<unknown[]>(storageKey("pinned-issue-ids", instanceId), []);
   return new Set(arr.filter((v): v is number => typeof v === "number"));
 }
 
-function saveIds(ids: Set<number>) {
-  safeSet(STORAGE_KEY, [...ids]);
+function saveIds(ids: Set<number>, instanceId?: string) {
+  safeSet(storageKey("pinned-issue-ids", instanceId), [...ids]);
 }
 
-function loadHiddenIds(): Set<number> {
-  const arr = safeGet<unknown[]>(HIDDEN_ASSIGNED_KEY, []);
+function loadHiddenIds(instanceId?: string): Set<number> {
+  const arr = safeGet<unknown[]>(storageKey("hidden-assigned-ids", instanceId), []);
   return new Set(arr.filter((v): v is number => typeof v === "number"));
 }
 
-function saveHiddenIds(ids: Set<number>) {
-  safeSet(HIDDEN_ASSIGNED_KEY, [...ids]);
+function saveHiddenIds(ids: Set<number>, instanceId?: string) {
+  safeSet(storageKey("hidden-assigned-ids", instanceId), [...ids]);
 }
 
-function loadAutoPinIds(): Set<number> {
-  const arr = safeGet<unknown[]>(AUTO_PIN_KEY, []);
+function loadAutoPinIds(instanceId?: string): Set<number> {
+  const arr = safeGet<unknown[]>(storageKey("auto-pinned-ids", instanceId), []);
   return new Set(arr.filter((v): v is number => typeof v === "number"));
 }
 
-function saveAutoPinIds(ids: Set<number>) {
-  safeSet(AUTO_PIN_KEY, [...ids]);
+function saveAutoPinIds(ids: Set<number>, instanceId?: string) {
+  safeSet(storageKey("auto-pinned-ids", instanceId), [...ids]);
 }
 
-function loadCachedIssues(): Record<number, RedmineIssue> {
-  return safeGet<Record<number, RedmineIssue>>(CACHE_KEY, {});
+function loadCachedIssues(instanceId?: string): Record<number, RedmineIssue> {
+  return safeGet<Record<number, RedmineIssue>>(storageKey("pinned-issue-cache", instanceId), {});
 }
 
-function saveCachedIssues(cache: Record<number, RedmineIssue>) {
-  safeSet(CACHE_KEY, cache);
+function saveCachedIssues(cache: Record<number, RedmineIssue>, instanceId?: string) {
+  safeSet(storageKey("pinned-issue-cache", instanceId), cache);
 }
 
 interface RecentPinEntry {
@@ -54,12 +51,12 @@ interface RecentPinEntry {
   issue: RedmineIssue;
 }
 
-function loadRecentPins(): RecentPinEntry[] {
-  return safeGet<RecentPinEntry[]>(RECENT_PINS_KEY, []);
+function loadRecentPins(instanceId?: string): RecentPinEntry[] {
+  return safeGet<RecentPinEntry[]>(storageKey("recent-pinned-issues", instanceId), []);
 }
 
-function saveRecentPins(entries: RecentPinEntry[]) {
-  safeSet(RECENT_PINS_KEY, entries);
+function saveRecentPins(entries: RecentPinEntry[], instanceId?: string) {
+  safeSet(storageKey("recent-pinned-issues", instanceId), entries);
 }
 
 interface UsePinnedIssuesReturn {
@@ -78,13 +75,13 @@ interface UsePinnedIssuesReturn {
   syncAssignedPins: (assignedIssues: RedmineIssue[]) => void;
 }
 
-export function usePinnedIssues(): UsePinnedIssuesReturn {
-  // Single source of truth: Map<id, issue | null>
-  // Key present = pinned. Value null = data not yet loaded (cache miss).
+export function usePinnedIssues(instanceId?: string): UsePinnedIssuesReturn {
+  const apiPrefix = instanceId ? `/api/i/${instanceId}` : "/api";
+
   const [pinMap, setPinMap] = useState<Map<number, RedmineIssue | null>>(() => {
-    const ids = loadIds();
+    const ids = loadIds(instanceId);
     if (ids.size === 0) return new Map();
-    const cache = loadCachedIssues();
+    const cache = loadCachedIssues(instanceId);
     const map = new Map<number, RedmineIssue | null>();
     for (const id of ids) {
       map.set(id, cache[id] ?? null);
@@ -92,9 +89,11 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
     return map;
   });
 
-  const [recentPins, setRecentPins] = useState<RecentPinEntry[]>(loadRecentPins);
-  const [hiddenAssignedIds, setHiddenAssignedIds] = useState<Set<number>>(loadHiddenIds);
-  const [autoPinIds, setAutoPinIds] = useState<Set<number>>(loadAutoPinIds);
+  const [recentPins, setRecentPins] = useState<RecentPinEntry[]>(() => loadRecentPins(instanceId));
+  const [hiddenAssignedIds, setHiddenAssignedIds] = useState<Set<number>>(() =>
+    loadHiddenIds(instanceId),
+  );
+  const [autoPinIds, setAutoPinIds] = useState<Set<number>>(() => loadAutoPinIds(instanceId));
   const loadedRef = useRef(false);
 
   // Derived state — always in sync with pinMap within the same render
@@ -106,20 +105,20 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
 
   useEffect(() => {
     const ids = new Set(pinMap.keys());
-    saveIds(ids);
+    saveIds(ids, instanceId);
     const cache: Record<number, RedmineIssue> = {};
     for (const [id, issue] of pinMap) {
       if (issue !== null) cache[id] = issue;
     }
-    saveCachedIssues(cache);
-  }, [pinMap]);
+    saveCachedIssues(cache, instanceId);
+  }, [pinMap, instanceId]);
 
   // Background-refresh pinned issues on mount (cache already provides instant display)
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
 
-    const ids = loadIds();
+    const ids = loadIds(instanceId);
     if (ids.size === 0) return;
 
     let cancelled = false;
@@ -129,7 +128,7 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
       await Promise.all(
         [...ids].map(async (id) => {
           try {
-            const data = await api<{ issue: RedmineIssue }>(`/api/issues/${id}`);
+            const data = await api<{ issue: RedmineIssue }>(`${apiPrefix}/issues/${id}`);
             results.set(id, { issue: data.issue });
           } catch (e: unknown) {
             if (e instanceof ApiError && e.status === 404) {
@@ -165,19 +164,19 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [apiPrefix, instanceId]);
 
   useEffect(() => {
-    saveRecentPins(recentPins);
-  }, [recentPins]);
+    saveRecentPins(recentPins, instanceId);
+  }, [recentPins, instanceId]);
 
   useEffect(() => {
-    saveHiddenIds(hiddenAssignedIds);
-  }, [hiddenAssignedIds]);
+    saveHiddenIds(hiddenAssignedIds, instanceId);
+  }, [hiddenAssignedIds, instanceId]);
 
   useEffect(() => {
-    saveAutoPinIds(autoPinIds);
-  }, [autoPinIds]);
+    saveAutoPinIds(autoPinIds, instanceId);
+  }, [autoPinIds, instanceId]);
 
   const hide = useCallback((issueId: number) => {
     setHiddenAssignedIds((prev) => {
@@ -202,11 +201,14 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
 
       const assignedIdSet = new Set(assignedIssues.map((i) => i.id));
 
-      const autoPinMigrated = safeGet<boolean>(AUTO_PIN_MIGRATION_KEY, false);
+      const autoPinMigrated = safeGet<boolean>(
+        storageKey("auto-pin-migration-done", instanceId),
+        false,
+      );
       let effectiveAutoPinIds = autoPinIds;
       if (!autoPinMigrated) {
-        safeSet(AUTO_PIN_MIGRATION_KEY, true);
-        const currentPinIds = loadIds();
+        safeSet(storageKey("auto-pin-migration-done", instanceId), true);
+        const currentPinIds = loadIds(instanceId);
         const migrated = new Set(autoPinIds);
         for (const id of currentPinIds) {
           if (assignedIdSet.has(id)) migrated.add(id);
@@ -215,9 +217,9 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
         setAutoPinIds(migrated);
       }
 
-      const migrated = safeGet<boolean>(MIGRATION_KEY, false);
+      const migrated = safeGet<boolean>(storageKey("pin-migration-done", instanceId), false);
       if (!migrated) {
-        safeSet(MIGRATION_KEY, true);
+        safeSet(storageKey("pin-migration-done", instanceId), true);
         const newlyPinned = new Set<number>();
         setPinMap((prev) => {
           const next = new Map(prev);
@@ -281,7 +283,7 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
         return changed ? next : prev;
       });
     },
-    [hiddenAssignedIds, autoPinIds],
+    [hiddenAssignedIds, autoPinIds, instanceId],
   );
 
   const addToRecentPins = useCallback((issue: RedmineIssue) => {
@@ -370,7 +372,7 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
     await Promise.all(
       ids.map(async (id) => {
         try {
-          const data = await api<{ issue: RedmineIssue }>(`/api/issues/${id}`);
+          const data = await api<{ issue: RedmineIssue }>(`${apiPrefix}/issues/${id}`);
           results.set(id, { issue: data.issue });
         } catch (e: unknown) {
           if (e instanceof ApiError && e.status === 404) {
@@ -388,7 +390,7 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
     setPinMap((prev) => {
       const next = new Map(prev);
       for (const [id, result] of results) {
-        if (!next.has(id)) continue; // user unpinned during fetch
+        if (!next.has(id)) continue;
         if (result === "deleted") {
           next.delete(id);
         } else if (result !== "error") {
@@ -397,7 +399,7 @@ export function usePinnedIssues(): UsePinnedIssuesReturn {
       }
       return next;
     });
-  }, [pinnedIds]);
+  }, [pinnedIds, apiPrefix]);
 
   const recentlyPinned = useMemo(() => recentPins.map((e) => e.issue), [recentPins]);
 

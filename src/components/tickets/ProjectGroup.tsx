@@ -9,7 +9,6 @@ import type {
   RedmineVersion,
   RedmineJournal,
   MultiTimerMap,
-  ActiveTimerId,
 } from "../../types/redmine";
 import { TicketCard } from "./TicketCard";
 import { ProjectGroupHeader } from "./ProjectGroupHeader";
@@ -25,7 +24,7 @@ export interface GroupProps {
   collapsed: Record<string, boolean>;
   toggle: (name: string) => void;
   timers: MultiTimerMap;
-  activeTimerId: ActiveTimerId;
+  activeTimerId: number | null;
   elapsedMap: Record<number, number>;
   statuses: RedmineStatus[];
   trackers: RedmineTracker[];

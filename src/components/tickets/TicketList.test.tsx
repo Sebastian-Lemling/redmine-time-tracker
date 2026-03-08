@@ -60,6 +60,7 @@ const issueBeta1 = createIssue({
 
 function makeProps(overrides?: Record<string, unknown>) {
   return {
+    instanceId: "default",
     issues: [issueAlpha1, issueAlpha2, issueBeta1] as RedmineIssue[],
     timers: {},
     activeId: null,
@@ -220,13 +221,13 @@ describe("TicketList", () => {
     render(<TicketList {...makeProps({ favoriteIds })} />);
     const favBtn = screen.getByTitle(/favorit/i);
     fireEvent.click(favBtn);
-    expect(JSON.parse(localStorage.getItem("show-favorites-group")!)).toBe(true);
+    expect(JSON.parse(localStorage.getItem("show-favorites-group-default")!)).toBe(true);
     fireEvent.click(favBtn);
-    expect(JSON.parse(localStorage.getItem("show-favorites-group")!)).toBe(false);
+    expect(JSON.parse(localStorage.getItem("show-favorites-group-default")!)).toBe(false);
   });
 
   it("favorites mode shows only favorited issues grouped by project", () => {
-    localStorage.setItem("show-favorites-group", "true");
+    localStorage.setItem("show-favorites-group-default", "true");
     const favoriteIds = new Set([101]);
     const favoriteIssues = [issueAlpha1];
     render(<TicketList {...makeProps({ favoriteIds, favoriteIssues })} />);
@@ -254,7 +255,7 @@ describe("TicketList", () => {
   });
 
   it("favorites mode shows empty state when no issues are favorited", () => {
-    localStorage.setItem("show-favorites-group", "true");
+    localStorage.setItem("show-favorites-group-default", "true");
     const favoriteIds = new Set([9999]);
     render(<TicketList {...makeProps({ favoriteIds })} />);
     expect(screen.getByText(/keine favoriten|no favorite/i)).toBeInTheDocument();
@@ -262,7 +263,7 @@ describe("TicketList", () => {
   });
 
   it("favorites mode with search shows no-results instead of no-favorites", () => {
-    localStorage.setItem("show-favorites-group", "true");
+    localStorage.setItem("show-favorites-group-default", "true");
     const favoriteIds = new Set([101]);
     render(<TicketList {...makeProps({ favoriteIds })} />);
     const input = screen.getByPlaceholderText(/search|suche.*tickets/i);
@@ -272,7 +273,7 @@ describe("TicketList", () => {
   });
 
   it("favorites mode disables pin toggle on cards", () => {
-    localStorage.setItem("show-favorites-group", "true");
+    localStorage.setItem("show-favorites-group-default", "true");
     const favoriteIds = new Set([101]);
     const onTogglePin = vi.fn();
     render(<TicketList {...makeProps({ favoriteIds, onTogglePin })} />);

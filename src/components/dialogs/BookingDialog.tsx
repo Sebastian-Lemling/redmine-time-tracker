@@ -18,6 +18,7 @@ export interface BookingDialogData {
   endTime?: string;
   wasRunning?: boolean;
   doneRatio?: number;
+  instanceId?: string;
 }
 
 interface Props {
@@ -36,6 +37,7 @@ interface Props {
     description: string;
     date: string;
     activityId: number;
+    activityName: string;
     doneRatio?: number;
   }) => void;
   onCancel: () => void;
@@ -127,6 +129,7 @@ export function BookingDialog({
       description,
       date,
       activityId: Number(activityId),
+      activityName: activities.find((a) => a.id.toString() === activityId)?.name || "",
       ...(onDoneRatioChange && localDoneRatio !== (data.doneRatio ?? 0)
         ? { doneRatio: localDoneRatio }
         : {}),

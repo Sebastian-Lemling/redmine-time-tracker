@@ -8,7 +8,9 @@ import type {
 import { api } from "../lib/api";
 import { logger } from "../lib/logger";
 
-export function useIssueCache() {
+export function useIssueCache(instanceId?: string) {
+  const prefix = instanceId ? `/api/i/${instanceId}` : "/api";
+
   const [issues, setIssues] = useState<RedmineIssue[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [activities, setActivities] = useState<RedmineActivity[]>([]);
@@ -32,7 +34,7 @@ export function useIssueCache() {
   const fetchIssues = useCallback(async (): Promise<RedmineIssue[]> => {
     setIssuesLoading(true);
     try {
-      const data = await api<{ issues: RedmineIssue[] }>("/api/issues");
+      const data = await api<{ issues: RedmineIssue[] }>(`${prefix}/issues`);
       const result = data.issues || [];
       setIssues(result);
       return result;
@@ -42,86 +44,97 @@ export function useIssueCache() {
     } finally {
       setIssuesLoading(false);
     }
-  }, []);
+  }, [prefix]);
 
   const fetchActivities = useCallback(async () => {
     try {
-      const data = await api<{ time_entry_activities: RedmineActivity[] }>("/api/activities");
+      const data = await api<{ time_entry_activities: RedmineActivity[] }>(`${prefix}/activities`);
       setActivities(data.time_entry_activities || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to fetch activities");
     }
-  }, []);
+  }, [prefix]);
 
   const fetchStatuses = useCallback(async () => {
     try {
-      const data = await api<{ issue_statuses: RedmineStatus[] }>("/api/statuses");
+      const data = await api<{ issue_statuses: RedmineStatus[] }>(`${prefix}/statuses`);
       setStatuses(data.issue_statuses || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to fetch statuses");
     }
-  }, []);
+  }, [prefix]);
 
   const fetchTrackers = useCallback(async () => {
     try {
-      const data = await api<{ trackers: RedmineTracker[] }>("/api/trackers");
+      const data = await api<{ trackers: RedmineTracker[] }>(`${prefix}/trackers`);
       setTrackers(data.trackers || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to fetch trackers");
     }
-  }, []);
+  }, [prefix]);
 
-  const fetchProjectActivities = useCallback(async (projectId: number) => {
-    if (fetchingActivities.current.has(projectId)) return;
-    fetchingActivities.current.add(projectId);
-    try {
-      const data = await api<{ time_entry_activities: RedmineActivity[] }>(
-        `/api/projects/${projectId}/activities`,
-      );
-      setActivitiesByProject((prev) => ({
-        ...prev,
-        [projectId]: data.time_entry_activities || [],
-      }));
-    } catch (e) {
-      logger.error(`Failed to fetch activities for project ${projectId}`, { error: e });
-    } finally {
-      fetchingActivities.current.delete(projectId);
-    }
-  }, []);
+  const fetchProjectActivities = useCallback(
+    async (projectId: number) => {
+      if (fetchingActivities.current.has(projectId)) return;
+      fetchingActivities.current.add(projectId);
+      try {
+        const data = await api<{ time_entry_activities: RedmineActivity[] }>(
+          `${prefix}/projects/${projectId}/activities`,
+        );
+        setActivitiesByProject((prev) => ({
+          ...prev,
+          [projectId]: data.time_entry_activities || [],
+        }));
+      } catch (e) {
+        logger.error(`Failed to fetch activities for project ${projectId}`, { error: e });
+      } finally {
+        fetchingActivities.current.delete(projectId);
+      }
+    },
+    [prefix],
+  );
 
-  const fetchProjectTrackers = useCallback(async (projectId: number) => {
-    if (fetchingProjectTrackers.current.has(projectId)) return;
-    fetchingProjectTrackers.current.add(projectId);
-    try {
-      const data = await api<{ trackers: RedmineTracker[] }>(`/api/projects/${projectId}/trackers`);
-      setTrackersByProject((prev) => ({
-        ...prev,
-        [projectId]: data.trackers || [],
-      }));
-    } catch (e) {
-      logger.error(`Failed to fetch trackers for project ${projectId}`, { error: e });
-    } finally {
-      fetchingProjectTrackers.current.delete(projectId);
-    }
-  }, []);
+  const fetchProjectTrackers = useCallback(
+    async (projectId: number) => {
+      if (fetchingProjectTrackers.current.has(projectId)) return;
+      fetchingProjectTrackers.current.add(projectId);
+      try {
+        const data = await api<{ trackers: RedmineTracker[] }>(
+          `${prefix}/projects/${projectId}/trackers`,
+        );
+        setTrackersByProject((prev) => ({
+          ...prev,
+          [projectId]: data.trackers || [],
+        }));
+      } catch (e) {
+        logger.error(`Failed to fetch trackers for project ${projectId}`, { error: e });
+      } finally {
+        fetchingProjectTrackers.current.delete(projectId);
+      }
+    },
+    [prefix],
+  );
 
-  const fetchAllowedStatuses = useCallback(async (issueId: number) => {
-    if (fetchingAllowedStatuses.current.has(issueId)) return;
-    fetchingAllowedStatuses.current.add(issueId);
-    try {
-      const data = await api<{ issue: { allowed_statuses?: RedmineStatus[] } }>(
-        `/api/issues/${issueId}?include=allowed_statuses`,
-      );
-      setAllowedStatusesByIssue((prev) => ({
-        ...prev,
-        [issueId]: data.issue.allowed_statuses || [],
-      }));
-    } catch (e) {
-      logger.error(`Failed to fetch allowed statuses for issue ${issueId}`, { error: e });
-    } finally {
-      fetchingAllowedStatuses.current.delete(issueId);
-    }
-  }, []);
+  const fetchAllowedStatuses = useCallback(
+    async (issueId: number) => {
+      if (fetchingAllowedStatuses.current.has(issueId)) return;
+      fetchingAllowedStatuses.current.add(issueId);
+      try {
+        const data = await api<{ issue: { allowed_statuses?: RedmineStatus[] } }>(
+          `${prefix}/issues/${issueId}?include=allowed_statuses`,
+        );
+        setAllowedStatusesByIssue((prev) => ({
+          ...prev,
+          [issueId]: data.issue.allowed_statuses || [],
+        }));
+      } catch (e) {
+        logger.error(`Failed to fetch allowed statuses for issue ${issueId}`, { error: e });
+      } finally {
+        fetchingAllowedStatuses.current.delete(issueId);
+      }
+    },
+    [prefix],
+  );
 
   const invalidateAllowedStatuses = useCallback((issueId: number) => {
     setAllowedStatusesByIssue((prev) => {
@@ -131,16 +144,19 @@ export function useIssueCache() {
     });
   }, []);
 
-  const refreshIssue = useCallback(async (issueId: number): Promise<RedmineIssue | null> => {
-    try {
-      const data = await api<{ issue: RedmineIssue }>(`/api/issues/${issueId}`);
-      setIssues((prev) => prev.map((i) => (i.id === issueId ? data.issue : i)));
-      return data.issue;
-    } catch {
-      setIssues((prev) => prev.filter((i) => i.id !== issueId));
-      return null;
-    }
-  }, []);
+  const refreshIssue = useCallback(
+    async (issueId: number): Promise<RedmineIssue | null> => {
+      try {
+        const data = await api<{ issue: RedmineIssue }>(`${prefix}/issues/${issueId}`);
+        setIssues((prev) => prev.map((i) => (i.id === issueId ? data.issue : i)));
+        return data.issue;
+      } catch {
+        setIssues((prev) => prev.filter((i) => i.id !== issueId));
+        return null;
+      }
+    },
+    [prefix],
+  );
 
   const mergeIssue = useCallback((issue: RedmineIssue) => {
     setIssues((prev) => prev.map((i) => (i.id === issue.id ? issue : i)));
@@ -148,7 +164,7 @@ export function useIssueCache() {
 
   const updateIssueStatus = useCallback(
     async (issueId: number, statusId: number, updatedOn?: string) => {
-      await api<{ ok: boolean }>(`/api/issues/${issueId}`, {
+      await api<{ ok: boolean }>(`${prefix}/issues/${issueId}`, {
         method: "PUT",
         body: JSON.stringify({
           status_id: statusId,
@@ -156,12 +172,12 @@ export function useIssueCache() {
         }),
       });
     },
-    [],
+    [prefix],
   );
 
   const updateIssueAssignee = useCallback(
     async (issueId: number, assignedToId: number, updatedOn?: string) => {
-      await api<{ ok: boolean }>(`/api/issues/${issueId}`, {
+      await api<{ ok: boolean }>(`${prefix}/issues/${issueId}`, {
         method: "PUT",
         body: JSON.stringify({
           assigned_to_id: assignedToId,
@@ -169,12 +185,12 @@ export function useIssueCache() {
         }),
       });
     },
-    [],
+    [prefix],
   );
 
   const updateIssueTracker = useCallback(
     async (issueId: number, trackerId: number, updatedOn?: string) => {
-      await api<{ ok: boolean }>(`/api/issues/${issueId}`, {
+      await api<{ ok: boolean }>(`${prefix}/issues/${issueId}`, {
         method: "PUT",
         body: JSON.stringify({
           tracker_id: trackerId,
@@ -182,12 +198,12 @@ export function useIssueCache() {
         }),
       });
     },
-    [],
+    [prefix],
   );
 
   const updateIssueVersion = useCallback(
     async (issueId: number, versionId: number, updatedOn?: string) => {
-      await api<{ ok: boolean }>(`/api/issues/${issueId}`, {
+      await api<{ ok: boolean }>(`${prefix}/issues/${issueId}`, {
         method: "PUT",
         body: JSON.stringify({
           fixed_version_id: versionId,
@@ -195,12 +211,12 @@ export function useIssueCache() {
         }),
       });
     },
-    [],
+    [prefix],
   );
 
   const updateIssueDoneRatio = useCallback(
     async (issueId: number, doneRatio: number, updatedOn?: string) => {
-      await api<{ ok: boolean }>(`/api/issues/${issueId}`, {
+      await api<{ ok: boolean }>(`${prefix}/issues/${issueId}`, {
         method: "PUT",
         body: JSON.stringify({
           done_ratio: doneRatio,
@@ -208,7 +224,7 @@ export function useIssueCache() {
         }),
       });
     },
-    [],
+    [prefix],
   );
 
   const createTimeEntry = useCallback(
@@ -219,7 +235,7 @@ export function useIssueCache() {
       activityId: number,
       date: string,
     ) => {
-      const data = await api<{ time_entry: { id: number } }>("/api/time_entries", {
+      const data = await api<{ time_entry: { id: number } }>(`${prefix}/time_entries`, {
         method: "POST",
         body: JSON.stringify({
           time_entry: {
@@ -233,7 +249,7 @@ export function useIssueCache() {
       });
       return data.time_entry.id;
     },
-    [],
+    [prefix],
   );
 
   return useMemo(

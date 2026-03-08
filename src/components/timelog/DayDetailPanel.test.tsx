@@ -93,8 +93,8 @@ describe("DayDetailPanel", () => {
     expect(screen.getByText("Fix bug")).toBeInTheDocument();
   });
 
-  it("shows unsynced metric as decimal hours", () => {
-    render(<DayDetailPanel {...makeProps({ unsyncedMinutes: 90 })} />);
+  it("shows total hours in header", () => {
+    render(<DayDetailPanel {...makeProps({ selectedDayMinutes: 90 })} />);
     expect(screen.getByText("1.5h")).toBeInTheDocument();
   });
 
@@ -249,81 +249,13 @@ describe("DayDetailPanel", () => {
     expect(onSelectionChange).not.toHaveBeenCalled();
   });
 
-  it("sort menu can be opened and closed via backdrop", () => {
-    const { container } = render(<DayDetailPanel {...makeProps()} />);
-    const sortBtn = screen.getByRole("button", { name: /sort|zeit|time/i });
-    fireEvent.click(sortBtn);
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
-    fireEvent.click(container.querySelector(".de-sort__backdrop")!);
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-  });
-
-  it("sort by project changes label and sets ascending direction", () => {
-    render(<DayDetailPanel {...makeProps()} />);
-    fireEvent.click(screen.getByRole("button", { name: /sort|zeit|time/i }));
-    fireEvent.click(screen.getByText(/projekt|project/i, { selector: ".de-sort__option-label" }));
-    expect(
-      screen.getByText(/projekt|project/i, { selector: ".de-sort__btn span" }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /sort|projekt|project/i }));
-    const activeOption = screen
-      .getAllByRole("option")
-      .find((opt) => opt.getAttribute("aria-selected") === "true")!;
-    expect(activeOption.querySelector("svg")).toBeInTheDocument();
-  });
-
-  it("sort same option toggles direction from desc to asc", () => {
-    render(<DayDetailPanel {...makeProps()} />);
-    fireEvent.click(screen.getByRole("button", { name: /sort|zeit|time/i }));
-    const timeOption = screen
-      .getAllByText(/^zeit$|^time$/i)
-      .find((el) => el.closest("[role='option']"))!
-      .closest("[role='option']")!;
-    fireEvent.click(timeOption);
-    const sortBtnAfter = screen.getByRole("button", { name: /sort|zeit|time/i });
-    const svgs = sortBtnAfter.querySelectorAll("svg");
-    expect(svgs.length).toBe(1);
-  });
-
-  it("sort by duration option works", () => {
-    render(<DayDetailPanel {...makeProps()} />);
-    fireEvent.click(screen.getByRole("button", { name: /sort|zeit|time/i }));
-    fireEvent.click(screen.getByText(/dauer|duration/i, { selector: ".de-sort__option-label" }));
-    expect(
-      screen.getByText(/dauer|duration/i, { selector: ".de-sort__btn span" }),
-    ).toBeInTheDocument();
-  });
-
-  it("sort by project actually reorders entries in DOM", () => {
-    const entries = [
-      makeEntry({ id: "e1", projectName: "Zebra", issueSubject: "Z-task" }),
-      makeEntry({ id: "e2", projectName: "Alpha", issueId: 101, issueSubject: "A-task" }),
-    ];
-    render(<DayDetailPanel {...makeProps({ unsyncedEntries: entries })} />);
-    expect(getCardTitles()).toEqual(["Z-task", "A-task"]);
-    fireEvent.click(screen.getByRole("button", { name: /sort|zeit|time/i }));
-    fireEvent.click(screen.getByText(/projekt|project/i, { selector: ".de-sort__option-label" }));
-    expect(getCardTitles()).toEqual(["A-task", "Z-task"]);
-  });
-
-  it("sort by duration actually reorders entries in DOM", () => {
-    const entries = [
-      makeEntry({ id: "e1", duration: 60, issueSubject: "Long task" }),
-      makeEntry({ id: "e2", duration: 15, issueId: 101, issueSubject: "Short task" }),
-    ];
-    render(<DayDetailPanel {...makeProps({ unsyncedEntries: entries })} />);
-    fireEvent.click(screen.getByRole("button", { name: /sort|zeit|time/i }));
-    fireEvent.click(screen.getByText(/dauer|duration/i, { selector: ".de-sort__option-label" }));
-    expect(getCardTitles()).toEqual(["Long task", "Short task"]);
-  });
-
-  it("sort by time descending orders newest first", () => {
+  it("renders entries in provided order (no sort UI)", () => {
     const entries = [
       makeEntry({ id: "e1", startTime: "2025-03-05T08:00:00", issueSubject: "Early" }),
       makeEntry({ id: "e2", startTime: "2025-03-05T14:00:00", issueId: 101, issueSubject: "Late" }),
     ];
     render(<DayDetailPanel {...makeProps({ unsyncedEntries: entries })} />);
-    expect(getCardTitles()).toEqual(["Late", "Early"]);
+    expect(getCardTitles()).toEqual(["Early", "Late"]);
   });
 
   it("unsynced tab click clears selection", () => {
@@ -476,9 +408,9 @@ describe("DayDetailPanel", () => {
     expect(onUpdateDuration).toHaveBeenCalledWith("e1", DURATION_MIN_MINUTES);
   });
 
-  it("synced metrics shown when synced minutes > 0", () => {
+  it("total hours shown when selectedDayMinutes > 0", () => {
     render(<DayDetailPanel {...makeProps({ syncedMinutes: 60, selectedDayMinutes: 90 })} />);
-    expect(screen.getByText("1h")).toBeInTheDocument();
+    expect(screen.getByText("1.5h")).toBeInTheDocument();
   });
 
   it("remote entry without issue shows project name as title", () => {

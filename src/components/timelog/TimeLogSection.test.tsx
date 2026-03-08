@@ -1,7 +1,31 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@/test/test-utils";
+import { render as baseRender, screen } from "@/test/test-utils";
 import { TimeLogSection } from "@/components/timelog/TimeLogSection";
+import { AppProvider } from "@/AppContext";
+import type { AppContextValue } from "@/AppContext";
 import type { TimeLogEntry } from "@/types/redmine";
+
+const defaultCtx: AppContextValue = {
+  user: { id: 1, login: "test", firstname: "T", lastname: "U", mail: "t@t.com" },
+  redmineUrl: "http://redmine.test",
+  route: { section: "timelog" },
+  navigate: () => {},
+  todayMinutes: 0,
+  weekMinutes: 0,
+  unsyncedCount: 0,
+  themeMode: "light",
+  setThemeMode: () => {},
+  loading: false,
+  isRefreshing: false,
+  onRefresh: () => {},
+  instances: [{ id: "default", name: "Redmine", url: "", order: 0 }],
+  activeInstanceId: "default",
+  instanceColorMap: { default: "#1a73e8" },
+};
+
+function render(ui: React.ReactElement) {
+  return baseRender(<AppProvider value={defaultCtx}>{ui}</AppProvider>);
+}
 
 const entry: TimeLogEntry = {
   id: "e1",
@@ -15,6 +39,7 @@ const entry: TimeLogEntry = {
   description: "Worked on fix",
   date: "2026-03-01",
   syncedToRedmine: false,
+  instanceId: "default",
 };
 
 const baseProps = {

@@ -52,6 +52,13 @@ export interface RedmineMember {
   name: string;
 }
 
+export interface RedmineInstance {
+  id: string;
+  name: string;
+  url: string;
+  order: number;
+}
+
 export interface RedmineTimeEntry {
   id: number;
   hours: number;
@@ -60,6 +67,8 @@ export interface RedmineTimeEntry {
   activity: { id: number; name: string };
   project: { id: number; name: string };
   issue?: { id: number };
+  instanceId?: string;
+  instanceName?: string;
 }
 
 export interface RedmineJournal {
@@ -90,6 +99,9 @@ export interface TimeLogEntry {
   syncedToRedmine: boolean;
   redmineTimeEntryId?: number;
   activityId?: number;
+  activityName?: string;
+  instanceId: string;
+  instanceName?: string;
 }
 
 export interface TimerState {
@@ -100,6 +112,7 @@ export interface TimerState {
   startTime: string; // ISO string
   pausedAt?: string; // ISO when paused
   totalPausedMs?: number; // accumulated pause ms
+  instanceId: string;
 }
 
 export interface RedminePriority {
@@ -128,8 +141,19 @@ export interface IssueSearchResult {
   limit: number;
 }
 
-/** Multiple concurrent timers keyed by issueId */
-export type MultiTimerMap = Record<number, TimerState>;
+export type TimerKey = string;
 
-/** Which timer is actively running (null = all paused) */
-export type ActiveTimerId = number | null;
+export type MultiTimerMap = Record<TimerKey, TimerState>;
+
+export type ActiveTimerKey = TimerKey | null;
+
+export function timerKey(instanceId: string, issueId: number): TimerKey {
+  return `${instanceId}:${issueId}`;
+}
+
+export function parseTimerKey(key: TimerKey): { instanceId: string; issueId: number } {
+  const idx = key.lastIndexOf(":");
+  return { instanceId: key.slice(0, idx), issueId: Number(key.slice(idx + 1)) };
+}
+
+export const DEFAULT_INSTANCE_ID = "default";

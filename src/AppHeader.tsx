@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import { useI18n } from "./i18n/I18nContext";
 import { ProfileMenu } from "./components/ui";
@@ -23,32 +24,92 @@ export default function AppHeader() {
     setThemeMode,
     isRefreshing,
     onRefresh,
+    instances,
+    activeInstanceId,
   } = useAppContext();
   const activeSection = route.section;
+
+  const multiInstance = instances.length > 1;
+
+  const tabs = useMemo(() => {
+    const list: { key: string; go: () => void }[] = [];
+    if (multiInstance) {
+      for (const inst of instances) {
+        list.push({
+          key: inst.id,
+          go: () => navigate({ section: "tickets", instanceId: inst.id }),
+        });
+      }
+    } else {
+      list.push({ key: "tickets", go: () => navigate({ section: "tickets" }) });
+    }
+    list.push({ key: "timelog", go: () => navigate({ section: "timelog" }) });
+    return list;
+  }, [instances, multiInstance, navigate]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable)
+        return;
+      const digit = Number(e.key);
+      if (digit >= 1 && digit <= tabs.length) {
+        e.preventDefault();
+        tabs[digit - 1].go();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [tabs]);
 
   return (
     <header className="bg-surface-container-low md-elevation-1 sticky top-0 z-30">
       <div className="flex h-14 items-center gap-2 px-6">
         <nav className="-ml-5 flex items-center self-stretch">
-          <button
-            onClick={() => navigate({ section: "tickets" })}
-            className={`nav-tab relative flex h-full items-center px-5 text-sm font-medium tracking-[0.01em] transition-colors ${
-              activeSection === "tickets"
-                ? "text-on-surface"
-                : "text-on-surface-variant hover:bg-on-surface/[0.08]"
-            }`}
-          >
-            {t.tickets}
-            {activeSection === "tickets" && (
-              <span className="bg-primary absolute bottom-0 left-1/2 h-[3px] w-[calc(100%-16px)] -translate-x-1/2 rounded-full" />
-            )}
-          </button>
+          {multiInstance ? (
+            instances.map((inst, i) => {
+              const isActive = activeSection === "tickets" && activeInstanceId === inst.id;
+              return (
+                <button
+                  key={inst.id}
+                  onClick={() => navigate({ section: "tickets", instanceId: inst.id })}
+                  className={`nav-tab relative flex h-full items-center gap-2 px-5 text-sm font-medium tracking-[0.01em] transition-colors ${
+                    isActive
+                      ? "nav-tab--active text-on-surface"
+                      : "text-on-surface-variant hover:bg-on-surface/[0.08]"
+                  }`}
+                >
+                  {inst.name}
+                  <kbd className="nav-tab__kbd">{i + 1}</kbd>
+                  {isActive && (
+                    <span className="bg-primary absolute bottom-0 left-1/2 h-[3px] w-[calc(100%-16px)] -translate-x-1/2 rounded-full" />
+                  )}
+                </button>
+              );
+            })
+          ) : (
+            <button
+              onClick={() => navigate({ section: "tickets" })}
+              className={`nav-tab relative flex h-full items-center gap-2 px-5 text-sm font-medium tracking-[0.01em] transition-colors ${
+                activeSection === "tickets"
+                  ? "nav-tab--active text-on-surface"
+                  : "text-on-surface-variant hover:bg-on-surface/[0.08]"
+              }`}
+            >
+              {t.tickets}
+              <kbd className="nav-tab__kbd">1</kbd>
+              {activeSection === "tickets" && (
+                <span className="bg-primary absolute bottom-0 left-1/2 h-[3px] w-[calc(100%-16px)] -translate-x-1/2 rounded-full" />
+              )}
+            </button>
+          )}
 
           <button
             onClick={() => navigate({ section: "timelog" })}
             className={`nav-tab relative flex h-full items-center gap-1.5 px-5 text-sm font-medium tracking-[0.01em] transition-colors ${
               activeSection === "timelog"
-                ? "text-on-surface"
+                ? "nav-tab--active text-on-surface"
                 : "text-on-surface-variant hover:bg-on-surface/[0.08]"
             }`}
           >
@@ -58,6 +119,7 @@ export default function AppHeader() {
                 {unsyncedCount}
               </span>
             )}
+            <kbd className="nav-tab__kbd">{multiInstance ? instances.length + 1 : 2}</kbd>
             {activeSection === "timelog" && (
               <span className="bg-primary absolute bottom-0 left-1/2 h-[3px] w-[calc(100%-16px)] -translate-x-1/2 rounded-full" />
             )}

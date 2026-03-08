@@ -4,11 +4,9 @@ import App from "./App";
 import type { TimeLogEntry } from "./types/redmine";
 import { toLocalDateString, getWeekKey, getWeekDates } from "./lib/dates";
 
-const mockFetchIssues = vi.fn().mockResolvedValue([]);
 const mockFetchActivities = vi.fn().mockResolvedValue([]);
 const mockFetchStatuses = vi.fn().mockResolvedValue([]);
 const mockFetchTrackers = vi.fn().mockResolvedValue([]);
-const mockRefreshPinned = vi.fn().mockResolvedValue([]);
 
 const defaultRedmine = {
   user: null as any,
@@ -29,7 +27,7 @@ const defaultRedmine = {
   issueSubjects: {},
   remoteEntries: [],
   remoteLoading: false,
-  fetchIssues: mockFetchIssues,
+  fetchIssues: vi.fn().mockResolvedValue([]),
   fetchActivities: mockFetchActivities,
   fetchStatuses: mockFetchStatuses,
   fetchTrackers: mockFetchTrackers,
@@ -94,24 +92,17 @@ vi.mock("./hooks/useTimeLog", () => ({
   }),
 }));
 
-const mockIsPinned = vi.fn(() => false);
-const mockToggle = vi.fn();
-const mockUnpin = vi.fn();
-const mockHide = vi.fn();
-const mockPinSilent = vi.fn();
-const mockSyncAssignedPins = vi.fn();
-
 vi.mock("./hooks/usePinnedIssues", () => ({
   usePinnedIssues: () => ({
     pinnedIds: new Set(),
     pinnedIssues: [],
-    isPinned: mockIsPinned,
-    toggle: mockToggle,
-    unpin: mockUnpin,
-    hide: mockHide,
-    pinSilent: mockPinSilent,
-    syncAssignedPins: mockSyncAssignedPins,
-    refreshPinned: mockRefreshPinned,
+    isPinned: vi.fn(() => false),
+    toggle: vi.fn(),
+    unpin: vi.fn(),
+    hide: vi.fn(),
+    pinSilent: vi.fn(),
+    syncAssignedPins: vi.fn(),
+    refreshPinned: vi.fn().mockResolvedValue([]),
     updateIssue: vi.fn(),
   }),
 }));
@@ -135,6 +126,17 @@ vi.mock("./hooks/useTheme", () => ({
 vi.mock("./hooks/useVisibilityRefresh", () => ({
   useVisibilityRefresh: () => ({
     lastFetchRef: { current: 0 },
+  }),
+}));
+
+vi.mock("./hooks/useInstances", () => ({
+  useInstances: () => ({
+    instances: [],
+    loading: false,
+    renameInstance: vi.fn(),
+    reorderInstances: vi.fn(),
+    getInstanceName: vi.fn((id: string) => id),
+    instanceMap: new Map(),
   }),
 }));
 
@@ -287,21 +289,18 @@ describe("App", () => {
     expect(screen.getByTestId("app-content")).toBeInTheDocument();
   });
 
-  it("fetches issues, activities, statuses, trackers when user is available", () => {
+  it("fetches activities when user is available", () => {
     redmineOverrides = {
       user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
     };
     render(<App />);
-    expect(mockFetchIssues).toHaveBeenCalled();
     expect(mockFetchActivities).toHaveBeenCalled();
-    expect(mockFetchStatuses).toHaveBeenCalled();
-    expect(mockFetchTrackers).toHaveBeenCalled();
   });
 
   it("does not fetch data when no user", () => {
     redmineOverrides = { user: null };
     render(<App />);
-    expect(mockFetchIssues).not.toHaveBeenCalled();
+    expect(mockFetchActivities).not.toHaveBeenCalled();
   });
 
   it("renders Snackbar component", () => {
@@ -329,15 +328,6 @@ describe("App", () => {
       user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
     };
     render(<App />);
-    // Trigger error via captured AppContent props' onEditEntry -> actually via setError
-    // We need to use the dialog mechanism that calls setError
-    // Instead, we can test via the rendering mechanism: error banner is driven by useState
-    // To trigger it, we can invoke setError from AppContent props
-    // But setError is internal. Let's use a different approach:
-    // The error state is set by setError which is passed to useDialogManager and useSyncOrchestrator
-    // Since those are mocked, we can't easily trigger setError. But we can test
-    // error banner rendering by capturing the AppContent props and calling relevant callbacks.
-
     // For now, verify no error banner when error is null
     expect(screen.queryByText(/dismiss|schließen/i)).not.toBeInTheDocument();
   });
@@ -449,10 +439,10 @@ describe("App", () => {
     };
     render(<App />);
     expect(capturedAppContentProps.activeSection).toBe("tickets");
-    expect(capturedAppContentProps.mergedIssues).toEqual([]);
     expect(capturedAppContentProps.entries).toEqual([]);
-    expect(typeof capturedAppContentProps.onTogglePin).toBe("function");
-    expect(typeof capturedAppContentProps.onToggleAssignedPin).toBe("function");
+    expect(capturedAppContentProps.activeInstanceId).toBe("default");
+    expect(typeof capturedAppContentProps.startOrResume).toBe("function");
+    expect(typeof capturedAppContentProps.capture).toBe("function");
   });
 
   it("computes unsyncedCount from entries", () => {
@@ -469,6 +459,7 @@ describe("App", () => {
         description: "",
         date: "2026-03-03",
         syncedToRedmine: false,
+        instanceId: "default",
       },
       {
         id: "e2",
@@ -482,6 +473,7 @@ describe("App", () => {
         description: "",
         date: "2026-03-03",
         syncedToRedmine: true,
+        instanceId: "default",
       },
     ] as TimeLogEntry[];
     timeLogOverrides = { entries };
@@ -489,78 +481,7 @@ describe("App", () => {
       user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
     };
     render(<App />);
-    // unsyncedCount is passed via AppProvider context, not directly as a prop.
-    // But we can verify entries are passed to AppContent
     expect(capturedAppContentProps.entries).toEqual(entries);
-  });
-
-  it("handleTogglePin calls pinned.toggle and hides assigned issue if it was pinned", () => {
-    const issue = { id: 1, subject: "Test", project: { id: 1, name: "P" } };
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-      issues: [issue] as any[],
-    };
-    mockIsPinned.mockReturnValue(true);
-    render(<App />);
-    act(() => {
-      capturedAppContentProps.onTogglePin(issue);
-    });
-    expect(mockToggle).toHaveBeenCalledWith(issue);
-    expect(mockHide).toHaveBeenCalledWith(1);
-  });
-
-  it("handleTogglePin does not hide when issue was not pinned", () => {
-    const issue = { id: 1, subject: "Test", project: { id: 1, name: "P" } };
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-      issues: [issue] as any[],
-    };
-    mockIsPinned.mockReturnValue(false);
-    render(<App />);
-    act(() => {
-      capturedAppContentProps.onTogglePin(issue);
-    });
-    expect(mockToggle).toHaveBeenCalledWith(issue);
-    expect(mockHide).not.toHaveBeenCalled();
-  });
-
-  it("handleToggleAssignedPin unpins and hides when already pinned", () => {
-    const issue = { id: 1, subject: "Test", project: { id: 1, name: "P" } };
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-    };
-    mockIsPinned.mockReturnValue(true);
-    render(<App />);
-    act(() => {
-      capturedAppContentProps.onToggleAssignedPin(issue);
-    });
-    expect(mockUnpin).toHaveBeenCalledWith(1);
-    expect(mockHide).toHaveBeenCalledWith(1);
-  });
-
-  it("handleToggleAssignedPin pins silently when not pinned", () => {
-    const issue = { id: 1, subject: "Test", project: { id: 1, name: "P" } };
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-    };
-    mockIsPinned.mockReturnValue(false);
-    render(<App />);
-    act(() => {
-      capturedAppContentProps.onToggleAssignedPin(issue);
-    });
-    expect(mockPinSilent).toHaveBeenCalledWith(issue);
-  });
-
-  it("syncAssignedPins is called with issues on render", () => {
-    const issues = [
-      { id: 1, subject: "Test", project: { id: 1, name: "P" }, updated_on: "2026-01-01T00:00:00Z" },
-    ];
-    redmineOverrides = {
-      user: { id: 1, login: "admin", firstname: "A", lastname: "B" },
-      issues: issues as any[],
-    };
-    render(<App />);
-    expect(mockSyncAssignedPins).toHaveBeenCalledWith(issues);
   });
 
   it("BookingDialog receives doneRatio from issues when bookDialog lacks it", async () => {
@@ -624,6 +545,7 @@ describe("App", () => {
             description: "",
             date: today,
             syncedToRedmine: false,
+            instanceId: "default",
           },
         ] as TimeLogEntry[],
       };
@@ -665,6 +587,7 @@ describe("App", () => {
             description: "",
             date: today,
             syncedToRedmine: false,
+            instanceId: "default",
           },
         ] as TimeLogEntry[],
       };
@@ -698,6 +621,7 @@ describe("App", () => {
             description: "",
             date: today,
             syncedToRedmine: true,
+            instanceId: "default",
           },
           {
             id: "e2",
@@ -711,6 +635,7 @@ describe("App", () => {
             description: "",
             date: today,
             syncedToRedmine: false,
+            instanceId: "default",
           },
         ] as TimeLogEntry[],
       };
@@ -735,6 +660,7 @@ describe("App", () => {
             description: "",
             date: today,
             syncedToRedmine: false,
+            instanceId: "default",
           },
           {
             id: "e2",
@@ -748,6 +674,7 @@ describe("App", () => {
             description: "",
             date: today,
             syncedToRedmine: true,
+            instanceId: "default",
           },
         ] as TimeLogEntry[],
       };

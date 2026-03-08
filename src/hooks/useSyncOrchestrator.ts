@@ -6,6 +6,7 @@ interface Deps {
   entries: TimeLogEntry[];
   markSynced: (id: string, redmineId: number) => Promise<void>;
   createTimeEntry: (
+    instanceId: string,
     issueId: number,
     hours: number,
     description: string,
@@ -39,6 +40,7 @@ export function useSyncOrchestrator(deps: Deps) {
       if (!entry) return;
       const hours = Number((entry.duration / 60).toFixed(2));
       const redmineId = await createTimeEntry(
+        entry.instanceId,
         entry.issueId,
         hours,
         entry.description,
@@ -57,6 +59,7 @@ export function useSyncOrchestrator(deps: Deps) {
       if (!entry) return;
       const hours = Number((entry.duration / 60).toFixed(2));
       const redmineId = await createTimeEntry(
+        entry.instanceId,
         entry.issueId,
         hours,
         entry.description,
