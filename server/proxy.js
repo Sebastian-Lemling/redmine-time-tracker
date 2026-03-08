@@ -170,7 +170,7 @@ async function redmineFetch(instanceId, path, options = {}) {
       try {
         body = JSON.parse(text);
       } catch {
-        return { status: 502, body: { error: "Invalid response from Redmine" } };
+        // Non-JSON response — preserve original status, not 502
       }
     }
     return {
@@ -499,6 +499,33 @@ app.get("/api/i/:instanceId/priorities", async (req, res) => {
   }
 });
 
+app.get("/api/i/:instanceId/attachments/download/:id/:filename", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  const { instanceId } = req.params;
+  const config = instanceConfigs.get(instanceId);
+  if (!config) return res.status(404).json({ error: "Unknown instance" });
+  try {
+    const attachPath = req.path.replace(`/api/i/${instanceId}`, "");
+    const url = `${config.baseUrl}${attachPath}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REDMINE_TIMEOUT_MS);
+    const upstream = await fetch(url, {
+      signal: controller.signal,
+      headers: { "X-Redmine-API-Key": config.apiKey },
+    });
+    clearTimeout(timeoutId);
+    if (!upstream.ok) return res.status(upstream.status).end();
+    const ct = upstream.headers.get("content-type");
+    if (ct) res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const arrayBuf = await upstream.arrayBuffer();
+    res.send(Buffer.from(arrayBuf));
+  } catch (e) {
+    console.error(`Redmine [${instanceId}] attachment proxy error:`, e.message);
+    res.status(502).json({ error: "Cannot fetch attachment" });
+  }
+});
+
 app.get("/api/i/:instanceId/issues/:id", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
@@ -653,6 +680,12 @@ app.put("/api/i/:instanceId/issues/:id", async (req, res) => {
       const v = Number(req.body.done_ratio);
       if (Number.isFinite(v) && v >= 0 && v <= 100) issue.done_ratio = v;
     }
+    if (typeof req.body.description === "string") {
+      issue.description = req.body.description;
+    }
+    if (typeof req.body.notes === "string") {
+      issue.notes = req.body.notes.slice(0, 10000);
+    }
     if (Object.keys(issue).length === 0) {
       return res.status(400).json({ error: "No valid fields to update" });
     }
@@ -664,6 +697,39 @@ app.put("/api/i/:instanceId/issues/:id", async (req, res) => {
     res.status(result.status).json(result.body || { error: "Update failed" });
   } catch (e) {
     console.error(`Redmine [${instanceId}] PUT /issues error:`, e.message);
+    res.status(502).json({ error: "Cannot reach Redmine" });
+  }
+});
+
+app.put("/api/i/:instanceId/journals/:id", async (req, res) => {
+  if (!validateInstanceId(req, res)) return;
+  if (!validateId(req, res)) return;
+  const { instanceId } = req.params;
+  try {
+    if (typeof req.body.notes !== "string") {
+      return res.status(400).json({ error: "notes field is required and must be a string" });
+    }
+    const notes = req.body.notes.slice(0, 10000);
+    const result = await redmineFetch(instanceId, `/journals/${req.params.id}.json`, {
+      method: "PUT",
+      body: JSON.stringify({ journal: { notes } }),
+    });
+    if (result.status >= 200 && result.status < 300) return res.json({ ok: true });
+    console.error(
+      `Redmine [${instanceId}] PUT /journals/${req.params.id} → ${result.status}`,
+      JSON.stringify(result.body),
+    );
+    if (result.status === 403) {
+      return res
+        .status(403)
+        .json({ error: "No permission to edit this journal", code: "FORBIDDEN" });
+    }
+    if (result.status === 404) {
+      return res.status(404).json({ error: "Journal not found", code: "NOT_FOUND" });
+    }
+    res.status(result.status).json(result.body || { error: "Update failed" });
+  } catch (e) {
+    console.error(`Redmine [${instanceId}] PUT /journals error:`, e.message);
     res.status(502).json({ error: "Cannot reach Redmine" });
   }
 });

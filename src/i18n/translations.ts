@@ -182,6 +182,36 @@ export interface Translations {
   // Comments
   comments: string;
   noComments: string;
+  showEarlierComments: (count: number) => string;
+  openConversation: string;
+
+  // Conversation dialog
+  editDescription: string;
+  saveDescription: string;
+  cancelEdit: string;
+  editComment: string;
+  saveComment: string;
+  commentEditForbidden: string;
+  saveFailed: string;
+  writeComment: string;
+  sendComment: string;
+  write: string;
+  preview: string;
+
+  // Journal detail fields
+  fieldStatus: string;
+  fieldAssignee: string;
+  fieldPriority: string;
+  fieldDoneRatio: string;
+  fieldTracker: string;
+  fieldSubject: string;
+  fieldVersion: string;
+  fieldCategory: string;
+  fieldStartDate: string;
+  fieldDueDate: string;
+  fieldEstimatedHours: string;
+  fieldGeneric: (name: string) => string;
+  changed: string;
 
   // Progress
   progress: string;
@@ -295,6 +325,16 @@ export interface Translations {
   issueUnpinned: (id: number) => string;
   issueFavorited: (id: number) => string;
   issueUnfavorited: (id: number) => string;
+
+  // Issue metadata (description tab)
+  fieldSpentHours: string;
+  fieldCreatedOn: string;
+  fieldUpdatedOn: string;
+  fieldAuthor: string;
+  attachments: string;
+  noAttachments: string;
+  copyTicketInfo: string;
+  ticketInfoCopied: string;
 
   // Relative time
   timeAgo: (value: number, unit: "minute" | "hour" | "day" | "week" | "month") => string;
@@ -476,6 +516,35 @@ export const de: Translations = {
 
   comments: "Kommentare",
   noComments: "Keine Kommentare",
+  showEarlierComments: (count) => `${count} ältere Kommentare anzeigen`,
+  openConversation: "Konversation öffnen",
+
+  editDescription: "Bearbeiten",
+  saveDescription: "Speichern",
+  cancelEdit: "Abbrechen",
+  editComment: "Kommentar bearbeiten",
+  saveComment: "Kommentar speichern",
+  commentEditForbidden:
+    "Keine Berechtigung oder die Redmine-API unterstützt das Bearbeiten von Kommentaren nicht",
+  saveFailed: "Speichern fehlgeschlagen",
+  writeComment: "Kommentar schreiben…",
+  sendComment: "Senden",
+  write: "Schreiben",
+  preview: "Vorschau",
+
+  fieldStatus: "Status",
+  fieldAssignee: "Zuständiger",
+  fieldPriority: "Priorität",
+  fieldDoneRatio: "Fortschritt",
+  fieldTracker: "Tracker",
+  fieldSubject: "Thema",
+  fieldVersion: "Version",
+  fieldCategory: "Kategorie",
+  fieldStartDate: "Beginn",
+  fieldDueDate: "Abgabe",
+  fieldEstimatedHours: "Geschätzte Zeit",
+  fieldGeneric: (name) => name,
+  changed: "geändert",
 
   progress: "Fortschritt",
 
@@ -571,6 +640,15 @@ export const de: Translations = {
   issueUnpinned: (id) => `Ticket #${id} losgelöst`,
   issueFavorited: (id) => `Ticket #${id} als Favorit markiert`,
   issueUnfavorited: (id) => `Ticket #${id} aus Favoriten entfernt`,
+
+  fieldSpentHours: "Aufgewendete Zeit",
+  fieldCreatedOn: "Erstellt",
+  fieldUpdatedOn: "Aktualisiert",
+  fieldAuthor: "Autor",
+  attachments: "Dateien",
+  noAttachments: "Keine Dateien",
+  copyTicketInfo: "Ticket-Infos kopieren",
+  ticketInfoCopied: "Ticket-Infos kopiert",
 
   timeAgo: (value, unit) => {
     const units: Record<string, string> = {
@@ -759,6 +837,34 @@ export const en: Translations = {
 
   comments: "Comments",
   noComments: "No comments",
+  showEarlierComments: (count) => `Show ${count} earlier comments`,
+  openConversation: "Open conversation",
+
+  editDescription: "Edit",
+  saveDescription: "Save",
+  cancelEdit: "Cancel",
+  editComment: "Edit comment",
+  saveComment: "Save comment",
+  commentEditForbidden: "No permission or the Redmine API does not support editing comments",
+  saveFailed: "Save failed",
+  writeComment: "Write a comment…",
+  sendComment: "Send",
+  write: "Write",
+  preview: "Preview",
+
+  fieldStatus: "Status",
+  fieldAssignee: "Assignee",
+  fieldPriority: "Priority",
+  fieldDoneRatio: "Progress",
+  fieldTracker: "Tracker",
+  fieldSubject: "Subject",
+  fieldVersion: "Version",
+  fieldCategory: "Category",
+  fieldStartDate: "Start date",
+  fieldDueDate: "Due date",
+  fieldEstimatedHours: "Estimated time",
+  fieldGeneric: (name) => name,
+  changed: "changed",
 
   progress: "Progress",
 
@@ -853,6 +959,15 @@ export const en: Translations = {
   issueUnpinned: (id) => `Issue #${id} unpinned`,
   issueFavorited: (id) => `Issue #${id} added to favorites`,
   issueUnfavorited: (id) => `Issue #${id} removed from favorites`,
+
+  fieldSpentHours: "Spent time",
+  fieldCreatedOn: "Created",
+  fieldUpdatedOn: "Updated",
+  fieldAuthor: "Author",
+  attachments: "Files",
+  noAttachments: "No files",
+  copyTicketInfo: "Copy ticket info",
+  ticketInfoCopied: "Ticket info copied",
 
   timeAgo: (value, unit) => {
     const units: Record<string, string> = {

@@ -58,9 +58,8 @@ interface Props {
   onAdjust: (issueId: number, deltaSec: number) => void;
   redmineUrl: string;
   onOpenBookDialog: (issue: RedmineIssue) => void;
-  issueDescriptions: Record<number, string>;
   issueComments: Record<number, RedmineJournal[]>;
-  onFetchIssueDescription: (issueId: number) => void;
+  onOpenConversation?: (issueId: number, tab?: "description" | "comments") => void;
   pinnedIds?: Set<number>;
   onTogglePin?: (issue: RedmineIssue) => void;
   favoriteIds?: Set<number>;
@@ -97,9 +96,8 @@ export function TicketList({
   onDiscard,
   onAdjust,
   onOpenBookDialog,
-  issueDescriptions,
   issueComments,
-  onFetchIssueDescription,
+  onOpenConversation,
   pinnedIds,
   onTogglePin,
   favoriteIds,
@@ -213,9 +211,8 @@ export function TicketList({
     onDiscard,
     onAdjust,
     onOpenBookDialog,
-    issueDescriptions,
     issueComments,
-    onFetchIssueDescription,
+    onOpenConversation,
     pinnedIds,
     onTogglePin: showFavoritesGroup ? undefined : onTogglePin,
     showFavoritesGroup,
