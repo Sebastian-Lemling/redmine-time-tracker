@@ -110,6 +110,7 @@ describe("useDialogManager", () => {
         description: "did stuff",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
 
@@ -147,6 +148,7 @@ describe("useDialogManager", () => {
         description: "",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
 
@@ -171,6 +173,7 @@ describe("useDialogManager", () => {
         description: "x",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
     expect(deps.addEntry).not.toHaveBeenCalled();
@@ -198,6 +201,7 @@ describe("useDialogManager", () => {
         description: "x",
         date: "2025-03-01",
         activityId: 5,
+        activityName: "",
       });
     });
 

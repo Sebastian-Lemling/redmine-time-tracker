@@ -9,7 +9,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
 const TIMELOG_FILE = join(DATA_DIR, "timelog.json");
 
-// --- Load instances ---
 const instances = loadInstances();
 
 if (instances.length === 0) {
@@ -17,7 +16,6 @@ if (instances.length === 0) {
   process.exit(1);
 }
 
-// Build config map for all instances
 const instanceConfigs = new Map();
 for (const inst of instances) {
   const config = getInstanceConfig(inst.id, instances);
@@ -36,13 +34,11 @@ if (instanceConfigs.size === 0) {
   process.exit(1);
 }
 
-// --- Local date helper ---
 function localDateString() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// --- Timelog file helpers ---
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 
 function readTimelog() {
@@ -82,7 +78,6 @@ function withTimelogLock(fn) {
   return next;
 }
 
-// --- Input validation ---
 function validateTimelogEntry(body) {
   const clean = {};
   if (typeof body.issueId === "number") clean.issueId = body.issueId;
@@ -95,6 +90,7 @@ function validateTimelogEntry(body) {
   if (typeof body.description === "string") clean.description = body.description.slice(0, 2000);
   if (typeof body.date === "string") clean.date = body.date.slice(0, 10);
   if (typeof body.activityId === "number") clean.activityId = body.activityId;
+  if (typeof body.activityName === "string") clean.activityName = body.activityName.slice(0, 200);
   if (typeof body.originalDuration === "number") clean.originalDuration = body.originalDuration;
   if (typeof body.instanceId === "string") clean.instanceId = body.instanceId.slice(0, 100);
   if (typeof body.instanceName === "string") clean.instanceName = body.instanceName.slice(0, 200);
@@ -110,15 +106,14 @@ function validateTimelogUpdate(body) {
   if (typeof body.duration === "number") clean.duration = body.duration;
   if (typeof body.date === "string") clean.date = body.date.slice(0, 10);
   if (typeof body.activityId === "number") clean.activityId = body.activityId;
+  if (typeof body.activityName === "string") clean.activityName = body.activityName.slice(0, 200);
   if (typeof body.originalDuration === "number") clean.originalDuration = body.originalDuration;
   return clean;
 }
 
-// --- Production mode ---
 const DIST_DIR = join(__dirname, "..", "dist");
 const isProduction = existsSync(DIST_DIR);
 
-// --- Express app ---
 const app = express();
 app.use(
   cors({
@@ -226,7 +221,6 @@ app.put("/api/instances", (req, res) => {
       order: typeof upd.order === "number" ? upd.order : (existing.order ?? 0),
     });
   }
-  // Keep instances that weren't in the update
   for (const inst of current) {
     if (!result.find((r) => r.id === inst.id)) {
       result.push(inst);
@@ -234,7 +228,6 @@ app.put("/api/instances", (req, res) => {
   }
   result.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   saveInstances(result);
-  // Update in-memory configs with new names
   for (const inst of result) {
     const cfg = instanceConfigs.get(inst.id);
     if (cfg) cfg.name = inst.name;
@@ -246,7 +239,6 @@ app.put("/api/instances", (req, res) => {
 // Per-instance Redmine API routes: /api/i/:instanceId/*
 // =============================================================================
 
-// Current user
 app.get("/api/i/:instanceId/me", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -265,7 +257,6 @@ app.get("/api/i/:instanceId/me", async (req, res) => {
   }
 });
 
-// Assigned issues (auto-paginate)
 app.get("/api/i/:instanceId/issues", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -291,7 +282,6 @@ app.get("/api/i/:instanceId/issues", async (req, res) => {
   }
 });
 
-// Activities (global)
 app.get("/api/i/:instanceId/activities", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -304,7 +294,6 @@ app.get("/api/i/:instanceId/activities", async (req, res) => {
   }
 });
 
-// Project-specific activities
 app.get("/api/i/:instanceId/projects/:id/activities", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
@@ -324,7 +313,6 @@ app.get("/api/i/:instanceId/projects/:id/activities", async (req, res) => {
   }
 });
 
-// Create time entry
 app.post("/api/i/:instanceId/time_entries", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -348,7 +336,6 @@ app.post("/api/i/:instanceId/time_entries", async (req, res) => {
   }
 });
 
-// Time entries for date range
 app.get("/api/i/:instanceId/time_entries/range", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -374,7 +361,6 @@ app.get("/api/i/:instanceId/time_entries/range", async (req, res) => {
       if (allEntries.length >= (result.body?.total_count || 0) || entries.length < limit) break;
       offset += limit;
     }
-    // Tag entries with instance info
     const config = instanceConfigs.get(instanceId);
     for (const e of allEntries) {
       e.instanceId = instanceId;
@@ -387,7 +373,6 @@ app.get("/api/i/:instanceId/time_entries/range", async (req, res) => {
   }
 });
 
-// Search issues
 app.get("/api/i/:instanceId/issues/search", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -474,7 +459,6 @@ app.get("/api/i/:instanceId/issues/search", async (req, res) => {
   }
 });
 
-// Projects
 app.get("/api/i/:instanceId/projects", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -503,7 +487,6 @@ app.get("/api/i/:instanceId/projects", async (req, res) => {
   }
 });
 
-// Priorities
 app.get("/api/i/:instanceId/priorities", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -516,7 +499,6 @@ app.get("/api/i/:instanceId/priorities", async (req, res) => {
   }
 });
 
-// Single issue
 app.get("/api/i/:instanceId/issues/:id", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
@@ -532,7 +514,6 @@ app.get("/api/i/:instanceId/issues/:id", async (req, res) => {
   }
 });
 
-// Today's time entries
 app.get("/api/i/:instanceId/time_entries/today", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -549,7 +530,6 @@ app.get("/api/i/:instanceId/time_entries/today", async (req, res) => {
   }
 });
 
-// Statuses
 app.get("/api/i/:instanceId/statuses", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -562,7 +542,6 @@ app.get("/api/i/:instanceId/statuses", async (req, res) => {
   }
 });
 
-// Trackers
 app.get("/api/i/:instanceId/trackers", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   const { instanceId } = req.params;
@@ -575,7 +554,6 @@ app.get("/api/i/:instanceId/trackers", async (req, res) => {
   }
 });
 
-// Project trackers
 app.get("/api/i/:instanceId/projects/:id/trackers", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
@@ -594,7 +572,6 @@ app.get("/api/i/:instanceId/projects/:id/trackers", async (req, res) => {
   }
 });
 
-// Project versions
 app.get("/api/i/:instanceId/projects/:id/versions", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
@@ -608,7 +585,6 @@ app.get("/api/i/:instanceId/projects/:id/versions", async (req, res) => {
   }
 });
 
-// Project members
 app.get("/api/i/:instanceId/projects/:id/members", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
@@ -638,7 +614,6 @@ app.get("/api/i/:instanceId/projects/:id/members", async (req, res) => {
   }
 });
 
-// Update issue
 app.put("/api/i/:instanceId/issues/:id", async (req, res) => {
   if (!validateInstanceId(req, res)) return;
   if (!validateId(req, res)) return;
@@ -697,7 +672,6 @@ app.put("/api/i/:instanceId/issues/:id", async (req, res) => {
 // Aggregated endpoints (across all instances)
 // =============================================================================
 
-// Aggregate time entries from all instances for a date range
 app.get("/api/time_entries/range", async (req, res) => {
   const { from, to } = req.query;
   if (!from || !to || typeof from !== "string" || typeof to !== "string") {
@@ -848,7 +822,6 @@ app.post("/api/timelog/:id", async (req, res) => {
   }
 });
 
-// Catch-all: forward unmatched /api/* to default instance
 app.all("/api/{*path}", async (req, res) => {
   if (!defaultInstanceId || !instanceConfigs.has(defaultInstanceId)) {
     return res.status(500).json({ error: "No default instance configured" });
@@ -875,7 +848,6 @@ app.all("/api/{*path}", async (req, res) => {
   }
 });
 
-// --- Production: serve built frontend ---
 if (isProduction) {
   app.use(express.static(DIST_DIR));
   app.get("{*path}", (req, res) => {
@@ -884,7 +856,6 @@ if (isProduction) {
   console.log("Serving frontend from dist/");
 }
 
-// --- Start ---
 const PORT = 3001;
 const HOST = isProduction ? "0.0.0.0" : "127.0.0.1";
 app.listen(PORT, HOST, () => {

@@ -99,6 +99,7 @@ export interface TimeLogEntry {
   syncedToRedmine: boolean;
   redmineTimeEntryId?: number;
   activityId?: number;
+  activityName?: string;
   instanceId: string;
   instanceName?: string;
 }
@@ -140,13 +141,10 @@ export interface IssueSearchResult {
   limit: number;
 }
 
-/** Composite key for multi-instance timers: "instanceId:issueId" */
 export type TimerKey = string;
 
-/** Multiple concurrent timers keyed by TimerKey */
 export type MultiTimerMap = Record<TimerKey, TimerState>;
 
-/** Which timer is actively running (null = all paused) */
 export type ActiveTimerKey = TimerKey | null;
 
 export function timerKey(instanceId: string, issueId: number): TimerKey {
@@ -158,5 +156,4 @@ export function parseTimerKey(key: TimerKey): { instanceId: string; issueId: num
   return { instanceId: key.slice(0, idx), issueId: Number(key.slice(idx + 1)) };
 }
 
-/** Default instance ID for single-instance setups and migration */
 export const DEFAULT_INSTANCE_ID = "default";

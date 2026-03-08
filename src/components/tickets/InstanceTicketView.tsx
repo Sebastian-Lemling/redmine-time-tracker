@@ -80,7 +80,6 @@ export function InstanceTicketView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [redmine.issues]);
 
-  // Instance-scoped timer state (translate composite keys → numeric)
   const instanceActiveId = useMemo(() => {
     if (!activeTimerKey) return null;
     const parsed = parseTimerKey(activeTimerKey);
@@ -189,7 +188,6 @@ export function InstanceTicketView({
     t,
   });
 
-  // Handle refresh trigger from parent
   const prevTrigger = useRef(refreshTrigger);
   useEffect(() => {
     if (refreshTrigger === prevTrigger.current) return;
@@ -227,6 +225,7 @@ export function InstanceTicketView({
       <div className="ticket-panel--left">
         <ErrorBoundary>
           <TicketList
+            instanceId={instanceId}
             issues={mergedIssues}
             pinnedIds={pinned.pinnedIds}
             timers={instanceTimers}

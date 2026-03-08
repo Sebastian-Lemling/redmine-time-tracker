@@ -76,7 +76,7 @@ export default function AppHeader() {
                   onClick={() => navigate({ section: "tickets", instanceId: inst.id })}
                   className={`nav-tab relative flex h-full items-center gap-2 px-5 text-sm font-medium tracking-[0.01em] transition-colors ${
                     isActive
-                      ? "text-on-surface"
+                      ? "nav-tab--active text-on-surface"
                       : "text-on-surface-variant hover:bg-on-surface/[0.08]"
                   }`}
                 >
@@ -93,7 +93,7 @@ export default function AppHeader() {
               onClick={() => navigate({ section: "tickets" })}
               className={`nav-tab relative flex h-full items-center gap-2 px-5 text-sm font-medium tracking-[0.01em] transition-colors ${
                 activeSection === "tickets"
-                  ? "text-on-surface"
+                  ? "nav-tab--active text-on-surface"
                   : "text-on-surface-variant hover:bg-on-surface/[0.08]"
               }`}
             >
@@ -109,7 +109,7 @@ export default function AppHeader() {
             onClick={() => navigate({ section: "timelog" })}
             className={`nav-tab relative flex h-full items-center gap-1.5 px-5 text-sm font-medium tracking-[0.01em] transition-colors ${
               activeSection === "timelog"
-                ? "text-on-surface"
+                ? "nav-tab--active text-on-surface"
                 : "text-on-surface-variant hover:bg-on-surface/[0.08]"
             }`}
           >

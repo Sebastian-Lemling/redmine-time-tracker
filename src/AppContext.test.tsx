@@ -20,6 +20,7 @@ function makeValue(overrides?: Partial<AppContextValue>): AppContextValue {
     onRefresh: () => {},
     instances: [],
     activeInstanceId: "default",
+    instanceColorMap: {},
     ...overrides,
   };
 }

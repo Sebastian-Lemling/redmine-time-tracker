@@ -1,7 +1,9 @@
+import { useContext } from "react";
 import { Pause, Check, Minus, Plus } from "lucide-react";
 import type { TimerState } from "../../types/redmine";
 import { formatTime } from "../../lib/dates";
 import { useI18n } from "../../i18n/I18nContext";
+import { AppContext } from "../../AppContext";
 
 interface Props {
   timer: TimerState;
@@ -13,6 +15,14 @@ interface Props {
 
 export function ActiveTimer({ timer, elapsed, onPause, onSave, onAdjust }: Props) {
   const { t } = useI18n();
+  const appCtx = useContext(AppContext);
+  const instances = appCtx?.instances ?? [];
+  const instanceColorMap = appCtx?.instanceColorMap ?? {};
+  const multiInstance = instances.length > 1;
+  const instanceName = multiInstance
+    ? instances.find((i) => i.id === timer.instanceId)?.name
+    : undefined;
+  const instanceColor = timer.instanceId ? instanceColorMap[timer.instanceId] : undefined;
   return (
     <div
       role="status"
@@ -36,7 +46,23 @@ export function ActiveTimer({ timer, elapsed, onPause, onSave, onAdjust }: Props
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="md-body-small truncate">
+          <span
+            className="md-body-small truncate"
+            style={{ display: "flex", alignItems: "center", gap: 4 }}
+          >
+            {multiInstance && instanceColor && (
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  backgroundColor: instanceColor,
+                  flexShrink: 0,
+                  display: "inline-block",
+                }}
+              />
+            )}
+            {instanceName && <>{instanceName} &middot; </>}
             {timer.projectName} &middot; #{timer.issueId}
           </span>
           <span className="md-label-large truncate">{timer.issueSubject}</span>

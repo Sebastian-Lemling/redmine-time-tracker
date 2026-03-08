@@ -1,5 +1,5 @@
 import { useState, useMemo, useContext } from "react";
-import { Check, Loader2, Minus, Clock, ArrowUp, ArrowDown } from "lucide-react";
+import { Check, Loader2, Minus, Clock } from "lucide-react";
 import type {
   TimeLogEntry as TEntry,
   RedmineActivity,
@@ -62,26 +62,19 @@ export function DayDetailPanel({
   const { t } = useI18n();
   const appCtx = useContext(AppContext);
   const instances = appCtx?.instances;
+  const instanceColorMap = appCtx?.instanceColorMap ?? {};
   const multiInstance = (instances?.length ?? 0) > 1;
+  const getColor = (instanceId: string | undefined, projectName: string) =>
+    instanceId && instanceColorMap[instanceId]
+      ? instanceColorMap[instanceId]
+      : getProjectColor(projectName);
   const instanceNameMap = useMemo(() => {
     if (!multiInstance || !instances) return null;
     return new Map(instances.map((inst) => [inst.id, inst.name]));
   }, [instances, multiInstance]);
+
   const setSelectedIds = onSelectionChange;
   const [syncingIds] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<"time" | "project" | "duration">("time");
-  const [sortAsc, setSortAsc] = useState(false);
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
-
-  const handleSortSelect = (key: "time" | "project" | "duration") => {
-    if (sortBy === key) {
-      setSortAsc((v) => !v);
-    } else {
-      setSortBy(key);
-      setSortAsc(key === "project");
-    }
-    setSortMenuOpen(false);
-  };
 
   const dayNum = new Date(selectedDate + "T00:00:00").getDate();
   const formatDetailDateLabel = (dateStr: string): string => {
@@ -101,33 +94,68 @@ export function DayDetailPanel({
     return issueSubjects[issueId] || `#${issueId}`;
   };
 
-  const sortedUnsyncedEntries = useMemo(() => {
-    const sorted = [...unsyncedEntries];
-    const dir = sortAsc ? 1 : -1;
-    sorted.sort((a, b) => {
-      if (sortBy === "time") return dir * a.startTime.localeCompare(b.startTime);
-      if (sortBy === "project") return dir * a.projectName.localeCompare(b.projectName);
-      return dir * (a.duration - b.duration);
-    });
-    return sorted;
-  }, [unsyncedEntries, sortBy, sortAsc]);
+  const groupedUnsyncedEntries = useMemo(() => {
+    if (!multiInstance) return [{ instanceId: "default", name: null, entries: unsyncedEntries }];
+    const map = new Map<string, TEntry[]>();
+    for (const e of unsyncedEntries) {
+      const key = e.instanceId || "default";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    }
+    const order = instances?.map((i) => i.id) ?? [...map.keys()];
+    return order
+      .filter((id) => map.has(id))
+      .map((id) => ({
+        instanceId: id,
+        name: instanceNameMap?.get(id) ?? id,
+        entries: map.get(id)!,
+      }));
+  }, [unsyncedEntries, multiInstance, instances, instanceNameMap]);
+
+  const groupedRemoteEntries = useMemo(() => {
+    if (!multiInstance) return [{ instanceId: "default", name: null, entries: remoteDayEntries }];
+    const map = new Map<string, RedmineTimeEntry[]>();
+    for (const re of remoteDayEntries) {
+      const key = re.instanceId || "default";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(re);
+    }
+    const order = instances?.map((i) => i.id) ?? [...map.keys()];
+    return order
+      .filter((id) => map.has(id))
+      .map((id) => ({
+        instanceId: id,
+        name: instanceNameMap?.get(id) ?? id,
+        entries: map.get(id)!,
+      }));
+  }, [remoteDayEntries, multiInstance, instances, instanceNameMap]);
 
   return (
     <div className="de-panel">
       <div className="de-panel__header">
-        <div className="de-panel__title">{formatDetailDateLabel(selectedDate)}</div>
-        {selectedDayMinutes > 0 && (
-          <div className="de-panel__metrics">
-            {unsyncedMinutes > 0 && (
-              <span className="de-panel__metric de-panel__metric--open">
-                {formatDurationDecimal(unsyncedMinutes)}
-              </span>
-            )}
-            {syncedMinutes > 0 && (
-              <span className="de-panel__metric de-panel__metric--synced">
-                {formatDurationDecimal(syncedMinutes)}
-              </span>
-            )}
+        <div className="de-panel__header-top">
+          <div className="de-panel__title">{formatDetailDateLabel(selectedDate)}</div>
+          {selectedDayMinutes > 0 && (
+            <span className="de-panel__total">{formatDurationDecimal(selectedDayMinutes)}</span>
+          )}
+        </div>
+
+        {selectedDayMinutes > 0 && (unsyncedMinutes > 0 || syncedMinutes > 0) && (
+          <div className="de-panel__summary">
+            <div className="de-panel__summary-bar">
+              {syncedMinutes > 0 && (
+                <div
+                  className="de-panel__summary-bar-synced"
+                  style={{ width: `${(syncedMinutes / selectedDayMinutes) * 100}%` }}
+                />
+              )}
+              {unsyncedMinutes > 0 && (
+                <div
+                  className="de-panel__summary-bar-draft"
+                  style={{ width: `${(unsyncedMinutes / selectedDayMinutes) * 100}%` }}
+                />
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -207,92 +235,56 @@ export function DayDetailPanel({
                           {selectedIds.size > 0 ? t.selected(selectedIds.size) : t.selectAll}
                         </span>
                       </div>
-                      <div className="de-sort">
-                        <button
-                          className="de-sort__btn"
-                          onClick={() => setSortMenuOpen((v) => !v)}
-                          aria-haspopup="listbox"
-                          aria-expanded={sortMenuOpen}
-                        >
-                          <span>
-                            {sortBy === "time"
-                              ? t.sortByTime
-                              : sortBy === "project"
-                                ? t.sortByProject
-                                : t.sortByDuration}
-                          </span>
-                          {sortAsc ? (
-                            <ArrowUp style={{ width: 14, height: 14 }} />
-                          ) : (
-                            <ArrowDown style={{ width: 14, height: 14 }} />
-                          )}
-                        </button>
-                        {sortMenuOpen && (
-                          <>
-                            <div
-                              className="de-sort__backdrop"
-                              onClick={() => setSortMenuOpen(false)}
-                            />
-                            <div className="de-sort__menu" role="listbox">
-                              {(["time", "project", "duration"] as const).map((key) => {
-                                const isActive = sortBy === key;
-                                return (
-                                  <button
-                                    key={key}
-                                    role="option"
-                                    aria-selected={isActive}
-                                    className={`de-sort__option${isActive ? " de-sort__option--active" : ""}`}
-                                    onClick={() => handleSortSelect(key)}
-                                  >
-                                    <span className="de-sort__option-label">
-                                      {key === "time"
-                                        ? t.sortByTime
-                                        : key === "project"
-                                          ? t.sortByProject
-                                          : t.sortByDuration}
-                                    </span>
-                                    {isActive &&
-                                      (sortAsc ? (
-                                        <ArrowUp style={{ width: 14, height: 14 }} />
-                                      ) : (
-                                        <ArrowDown style={{ width: 14, height: 14 }} />
-                                      ))}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </>
-                        )}
-                      </div>
                     </div>
-                    {sortedUnsyncedEntries.map((entry) => (
-                      <DayDetailEntry
-                        key={entry.id}
-                        entry={entry}
-                        selected={selectedIds.has(entry.id)}
-                        syncing={syncingIds.has(entry.id)}
-                        activities={getEntryActivities(entry)}
-                        redmineUrl={redmineUrl}
-                        instanceName={instanceNameMap?.get(entry.instanceId)}
-                        onToggleSelect={() => {
-                          const n = new Set(selectedIds);
-                          if (n.has(entry.id)) n.delete(entry.id);
-                          else n.add(entry.id);
-                          setSelectedIds(n);
-                        }}
-                        onEdit={() => onEdit(entry)}
-                        onDelete={() => onDelete(entry.id)}
-                        onIncrease={() =>
-                          onUpdateDuration(entry.id, entry.duration + DURATION_STEP_MINUTES)
-                        }
-                        onDecrease={() =>
-                          onUpdateDuration(
-                            entry.id,
-                            Math.max(DURATION_MIN_MINUTES, entry.duration - DURATION_STEP_MINUTES),
-                          )
-                        }
-                      />
-                    ))}
+                    <div className="de-groups">
+                      {groupedUnsyncedEntries.map((group) => (
+                        <div key={group.instanceId} className="de-group">
+                          {group.name && (
+                            <div className="de-group__header">
+                              <span
+                                className="de-group__header-dot"
+                                style={{ backgroundColor: instanceColorMap[group.instanceId] }}
+                              />
+                              <span>{group.name}</span>
+                            </div>
+                          )}
+                          {group.entries.map((entry) => (
+                            <DayDetailEntry
+                              key={entry.id}
+                              entry={entry}
+                              selected={selectedIds.has(entry.id)}
+                              syncing={syncingIds.has(entry.id)}
+                              activities={getEntryActivities(entry)}
+                              redmineUrl={redmineUrl}
+                              instanceName={instanceNameMap?.get(entry.instanceId)}
+                              instanceColor={
+                                multiInstance ? instanceColorMap[entry.instanceId] : undefined
+                              }
+                              onToggleSelect={() => {
+                                const n = new Set(selectedIds);
+                                if (n.has(entry.id)) n.delete(entry.id);
+                                else n.add(entry.id);
+                                setSelectedIds(n);
+                              }}
+                              onEdit={() => onEdit(entry)}
+                              onDelete={() => onDelete(entry.id)}
+                              onIncrease={() =>
+                                onUpdateDuration(entry.id, entry.duration + DURATION_STEP_MINUTES)
+                              }
+                              onDecrease={() =>
+                                onUpdateDuration(
+                                  entry.id,
+                                  Math.max(
+                                    DURATION_MIN_MINUTES,
+                                    entry.duration - DURATION_STEP_MINUTES,
+                                  ),
+                                )
+                              }
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
                   </>
                 ) : (
                   <div className="de-empty">
@@ -312,43 +304,67 @@ export function DayDetailPanel({
                     <div className="de-empty__title">{t.loadingRemote}</div>
                   </div>
                 ) : remoteDayEntries.length > 0 ? (
-                  remoteDayEntries.map((re) => (
-                    <div key={re.id} className="de-card de-card--disabled">
-                      <div className="de-card__row1">
-                        <div
-                          className="de-card__project-bar"
-                          style={{ backgroundColor: getProjectColor(re.project.name) }}
-                        />
-                        <div className="de-card__body">
-                          <div className="de-card__title">
-                            {re.issue ? getIssueSubject(re.issue.id) : re.project.name}
+                  <div className="de-groups">
+                    {groupedRemoteEntries.map((group) => (
+                      <div key={group.instanceId} className="de-group de-group--disabled">
+                        {group.name && (
+                          <div className="de-group__header">
+                            <span
+                              className="de-group__header-dot"
+                              style={{ backgroundColor: instanceColorMap[group.instanceId] }}
+                            />
+                            <span>{group.name}</span>
                           </div>
-                          <div className="de-card__meta">
-                            {re.issue && (
-                              <IssueBadge issueId={re.issue.id} redmineUrl={redmineUrl} />
-                            )}
-                            <span className="de-card__meta-chip de-card__meta-project">
-                              {re.project.name}
-                            </span>
-                            {multiInstance && re.instanceName && (
-                              <span className="de-card__meta-chip de-card__meta-instance">
-                                {re.instanceName}
-                              </span>
-                            )}
-                            <span className="de-card__meta-chip de-card__meta-activity">
-                              {re.activity.name}
-                            </span>
+                        )}
+                        {group.entries.map((re) => (
+                          <div key={re.id} className="de-card de-card--disabled">
+                            <div className="de-card__row1">
+                              <div
+                                className="de-card__project-bar"
+                                style={{
+                                  backgroundColor: multiInstance
+                                    ? getColor(re.instanceId, re.project.name)
+                                    : getProjectColor(re.project.name),
+                                }}
+                              />
+                              <div className="de-card__body">
+                                <div className="de-card__title">
+                                  {re.issue ? getIssueSubject(re.issue.id) : re.project.name}
+                                </div>
+                                <div className="de-card__meta">
+                                  {re.issue && (
+                                    <IssueBadge issueId={re.issue.id} redmineUrl={redmineUrl} />
+                                  )}
+                                  {multiInstance && re.instanceName && (
+                                    <span
+                                      className="de-card__meta-chip de-card__meta-instance"
+                                      style={{
+                                        backgroundColor: `color-mix(in srgb, ${getColor(re.instanceId, re.project.name)} 60%, transparent)`,
+                                      }}
+                                    >
+                                      {re.instanceName}
+                                    </span>
+                                  )}
+                                  <span className="de-card__meta-chip de-card__meta-project">
+                                    {re.project.name}
+                                  </span>
+                                  <span className="de-card__meta-chip de-card__meta-activity">
+                                    {re.activity.name}
+                                  </span>
+                                </div>
+                                {re.comments && <div className="de-card__desc">{re.comments}</div>}
+                              </div>
+                              <div className="de-card__trailing">
+                                <span className="de-card__duration">
+                                  {formatDurationDecimal(Math.round(re.hours * 60))}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          {re.comments && <div className="de-card__desc">{re.comments}</div>}
-                        </div>
-                        <div className="de-card__trailing">
-                          <span className="de-panel__metric de-panel__metric--synced">
-                            {formatDurationDecimal(Math.round(re.hours * 60))}
-                          </span>
-                        </div>
+                        ))}
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 ) : (
                   <div className="de-empty">
                     <Clock className="de-empty__icon" />

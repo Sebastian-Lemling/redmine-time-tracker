@@ -22,7 +22,6 @@ import AppContent from "./AppContent";
 import type { RedmineIssue } from "./types/redmine";
 
 export default function App() {
-  // Default instance for initial loading and fallback data
   const redmine = useRedmine();
   const { timers, activeId, elapsedMap, startOrResume, pause, capture, discard, adjustElapsed } =
     useMultiTimer();
@@ -44,14 +43,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [redmine.user]);
 
-  // Determine active instance for tickets tab
   const activeInstanceId = useMemo(() => {
     if (route.instanceId) return route.instanceId;
     if (instancesHook.instances.length > 0) return instancesHook.instances[0].id;
     return "default";
   }, [route.instanceId, instancesHook.instances]);
 
-  // Navigate to first instance if no instanceId in route and we have multi-instance
   useEffect(() => {
     if (route.section === "tickets" && !route.instanceId && instancesHook.instances.length > 0) {
       navigate({ section: "tickets", instanceId: instancesHook.instances[0].id });
@@ -68,7 +65,6 @@ export default function App() {
     setError,
   });
 
-  // Instance-aware createTimeEntry for sync orchestrator
   const createTimeEntry = useCallback(
     async (
       instanceId: string,
@@ -161,11 +157,9 @@ export default function App() {
     if (isRefreshing) return;
     setIsRefreshing(true);
 
-    // Trigger refresh in InstanceTicketView + shared data
     setRefreshTrigger((prev) => prev + 1);
     fetchWeekRemoteEntries();
 
-    // Minimum visible refresh time
     setTimeout(() => {
       setIsRefreshing(false);
     }, 1200);
@@ -233,6 +227,7 @@ export default function App() {
     onRefresh,
     instances: instancesHook.instances,
     activeInstanceId,
+    instanceColorMap: instancesHook.instanceColorMap,
   };
 
   return (

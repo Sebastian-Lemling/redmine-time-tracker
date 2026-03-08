@@ -20,6 +20,7 @@ function makeContext(overrides?: Partial<AppContextValue>): AppContextValue {
     onRefresh: vi.fn(),
     instances: [],
     activeInstanceId: "default",
+    instanceColorMap: {},
     ...overrides,
   };
 }

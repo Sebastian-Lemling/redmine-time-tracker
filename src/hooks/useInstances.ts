@@ -2,6 +2,10 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import type { RedmineInstance } from "../types/redmine";
 import { api } from "../lib/api";
 
+const INSTANCE_COLORS = ["#1a73e8", "#0d652d", "#e8710a", "#7b1fa2", "#c62828", "#00838f"];
+
+export { INSTANCE_COLORS };
+
 export function useInstances() {
   const [instances, setInstances] = useState<RedmineInstance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +67,14 @@ export function useInstances() {
 
   const instanceMap = useMemo(() => new Map(instances.map((inst) => [inst.id, inst])), [instances]);
 
+  const instanceColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    instances.forEach((inst, i) => {
+      map[inst.id] = INSTANCE_COLORS[i % INSTANCE_COLORS.length];
+    });
+    return map;
+  }, [instances]);
+
   const getInstanceName = useCallback(
     (instanceId: string): string => instanceMap.get(instanceId)?.name || instanceId,
     [instanceMap],
@@ -76,7 +88,16 @@ export function useInstances() {
       reorderInstances,
       getInstanceName,
       instanceMap,
+      instanceColorMap,
     }),
-    [instances, loading, renameInstance, reorderInstances, getInstanceName, instanceMap],
+    [
+      instances,
+      loading,
+      renameInstance,
+      reorderInstances,
+      getInstanceName,
+      instanceMap,
+      instanceColorMap,
+    ],
   );
 }

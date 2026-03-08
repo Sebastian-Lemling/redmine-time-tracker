@@ -36,7 +36,6 @@ export function useDialogManager(deps: Deps) {
   const [syncDialog, setSyncDialog] = useState<TimeLogEntry | null>(null);
   const [editDialog, setEditDialog] = useState<TimeLogEntry | null>(null);
 
-  // Instance-aware activity cache: keyed by "instanceId:projectId"
   const [activityCache, setActivityCache] = useState<Record<string, RedmineActivity[]>>({});
   const fetchingRef = useRef(new Set<string>());
 
@@ -129,6 +128,7 @@ export function useDialogManager(deps: Deps) {
       description: string;
       date: string;
       activityId: number;
+      activityName: string;
     }) => {
       if (!bookDialog) return;
       const instanceId = bookDialog.instanceId || "default";
@@ -145,6 +145,7 @@ export function useDialogManager(deps: Deps) {
           description: entry.description,
           date: entry.date,
           activityId: entry.activityId,
+          activityName: entry.activityName,
           instanceId,
         });
         if (bookDialog.startTime) {

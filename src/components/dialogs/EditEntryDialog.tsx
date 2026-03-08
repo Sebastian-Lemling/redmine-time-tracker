@@ -15,7 +15,13 @@ interface Props {
   onDoneRatioChange?: (issueId: number, value: number) => void;
   onSave: (
     id: string,
-    updates: { description: string; duration: number; date: string; activityId?: number },
+    updates: {
+      description: string;
+      duration: number;
+      date: string;
+      activityId?: number;
+      activityName?: string;
+    },
   ) => void;
   onCancel: () => void;
 }
@@ -84,7 +90,12 @@ export function EditEntryDialog({
       description,
       duration: totalMinutes,
       date,
-      ...(activityId ? { activityId: Number(activityId) } : {}),
+      ...(activityId
+        ? {
+            activityId: Number(activityId),
+            activityName: activities.find((a) => a.id.toString() === activityId)?.name,
+          }
+        : {}),
     });
     if (onDoneRatioChange && localDoneRatio !== (doneRatio ?? 0)) {
       onDoneRatioChange(entry.issueId, localDoneRatio);

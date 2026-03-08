@@ -12,8 +12,6 @@ function makeProps(overrides?: Record<string, unknown>) {
     localMinsByDate: {} as Record<string, number>,
     remoteMinsByDate: {} as Record<string, number>,
     unsyncedByDate: {} as Record<string, number>,
-    entryCountByDate: {} as Record<string, number>,
-    heatQuartiles: [1, 2, 3, 4],
     onSelectDay: vi.fn(),
     onNavigateMonth: vi.fn(),
     onGoToday: vi.fn(),
@@ -128,53 +126,29 @@ describe("MonthCalendar", () => {
     );
     const dayBtn = screen.getByText("20").closest("button")!;
     expect(within(dayBtn).getByText("2:00")).toBeInTheDocument();
-    const localBar = dayBtn.querySelector(".cal-bar__local") as HTMLElement;
-    const remoteBar = dayBtn.querySelector(".cal-bar__remote") as HTMLElement;
-    expect(localBar).toBeInTheDocument();
-    expect(remoteBar).toBeInTheDocument();
-    expect(localBar.style.width).toBe("50%");
-    expect(remoteBar.style.width).toBe("50%");
+    const syncedBar = dayBtn.querySelector(".cal-bar__synced") as HTMLElement;
+    const draftBar = dayBtn.querySelector(".cal-bar__draft") as HTMLElement;
+    expect(syncedBar).toBeInTheDocument();
+    expect(draftBar).toBeInTheDocument();
+    expect(syncedBar.style.width).toBe("50%");
+    expect(draftBar.style.width).toBe("50%");
   });
 
-  it("bar shows 75% local / 25% remote when 90/30 split", () => {
+  it("bar shows 75% synced / 25% draft when 90/30 split", () => {
     render(
       <MonthCalendar
         {...makeProps({
           minutesByDate: { "2025-03-20": 120 },
-          localMinsByDate: { "2025-03-20": 90 },
-          remoteMinsByDate: { "2025-03-20": 30 },
+          localMinsByDate: { "2025-03-20": 30 },
+          remoteMinsByDate: { "2025-03-20": 90 },
         })}
       />,
     );
     const dayBtn = screen.getByText("20").closest("button")!;
-    const localBar = dayBtn.querySelector(".cal-bar__local") as HTMLElement;
-    const remoteBar = dayBtn.querySelector(".cal-bar__remote") as HTMLElement;
-    expect(localBar.style.width).toBe("75%");
-    expect(remoteBar.style.width).toBe("25%");
-  });
-
-  it("getHeatLevel returns all 4 levels based on entryCountByDate", () => {
-    render(
-      <MonthCalendar
-        {...makeProps({
-          heatQuartiles: [1, 2, 4, 6],
-          entryCountByDate: {
-            "2025-03-03": 1,
-            "2025-03-04": 2,
-            "2025-03-05": 3,
-            "2025-03-06": 5,
-          },
-        })}
-      />,
-    );
-    const day3 = screen.getByText("3").closest("button")!;
-    const day4 = screen.getByText("4").closest("button")!;
-    const day5 = screen.getByText("5").closest("button")!;
-    const day6 = screen.getByText("6").closest("button")!;
-    expect(day3.className).toMatch(/cal-cell--heat-1/);
-    expect(day4.className).toMatch(/cal-cell--heat-2/);
-    expect(day5.className).toMatch(/cal-cell--heat-3/);
-    expect(day6.className).toMatch(/cal-cell--heat-4/);
+    const syncedBar = dayBtn.querySelector(".cal-bar__synced") as HTMLElement;
+    const draftBar = dayBtn.querySelector(".cal-bar__draft") as HTMLElement;
+    expect(syncedBar.style.width).toBe("75%");
+    expect(draftBar.style.width).toBe("25%");
   });
 
   it("day without minutes has no bar or hours", () => {
@@ -191,7 +165,7 @@ describe("MonthCalendar", () => {
     expect(onSelectDay).toHaveBeenCalledWith(20, false, false);
   });
 
-  it("weekend days get cal-cell--weekend class when no heat data", () => {
+  it("weekend days get cal-cell--weekend class", () => {
     render(<MonthCalendar {...makeProps()} />);
     const day1 = screen.getByText("1").closest("button")!;
     const day2 = screen.getByText("2").closest("button")!;
@@ -201,22 +175,13 @@ describe("MonthCalendar", () => {
     expect(day3.className).not.toMatch(/cal-cell--weekend/);
   });
 
-  it("selected day gets cal-cell--selected not cal-cell--heat even with heat data", () => {
-    render(
-      <MonthCalendar
-        {...makeProps({
-          selectedDate: "2025-03-05",
-          heatQuartiles: [1, 2, 4, 6],
-          entryCountByDate: { "2025-03-05": 3 },
-        })}
-      />,
-    );
+  it("selected day gets cal-cell--selected", () => {
+    render(<MonthCalendar {...makeProps({ selectedDate: "2025-03-05" })} />);
     const day5 = screen.getByText("5").closest("button")!;
     expect(day5.className).toMatch(/cal-cell--selected/);
-    expect(day5.className).not.toMatch(/cal-cell--heat/);
   });
 
-  it("day with only remote minutes shows only remote bar segment", () => {
+  it("day with only remote minutes shows only synced bar segment", () => {
     render(
       <MonthCalendar
         {...makeProps({
@@ -227,9 +192,9 @@ describe("MonthCalendar", () => {
       />,
     );
     const dayBtn = screen.getByText("7").closest("button")!;
-    expect(dayBtn.querySelector(".cal-bar__remote")).toBeInTheDocument();
-    expect(dayBtn.querySelector(".cal-bar__local")).not.toBeInTheDocument();
-    const remoteBar = dayBtn.querySelector(".cal-bar__remote") as HTMLElement;
-    expect(remoteBar.style.width).toBe("100%");
+    expect(dayBtn.querySelector(".cal-bar__synced")).toBeInTheDocument();
+    expect(dayBtn.querySelector(".cal-bar__draft")).not.toBeInTheDocument();
+    const syncedBar = dayBtn.querySelector(".cal-bar__synced") as HTMLElement;
+    expect(syncedBar.style.width).toBe("100%");
   });
 });

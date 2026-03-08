@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { safeGet, safeSet } from "../../lib/storage";
 
-const STORAGE_KEY = "ticket-disabled-projects";
-
-export function useEnabledProjects(allProjectNames: string[]) {
+export function useEnabledProjects(allProjectNames: string[], instanceId: string) {
+  const storageKey = `ticket-disabled-projects-${instanceId}`;
   const [enabledProjects, setEnabledProjects] = useState<Set<string>>(new Set());
-  const disabledByUser = useRef<Set<string>>(new Set(safeGet<string[]>(STORAGE_KEY, [])));
+  const disabledByUser = useRef<Set<string>>(new Set(safeGet<string[]>(storageKey, [])));
   const prevNamesRef = useRef<string>("");
 
   useEffect(() => {
@@ -29,8 +28,8 @@ export function useEnabledProjects(allProjectNames: string[]) {
 
   const persistDisabled = useCallback(() => {
     const arr = [...disabledByUser.current];
-    safeSet(STORAGE_KEY, arr.length > 0 ? arr : []);
-  }, []);
+    safeSet(storageKey, arr.length > 0 ? arr : []);
+  }, [storageKey]);
 
   const toggle = useCallback(
     (name: string) => {

@@ -18,6 +18,7 @@ export interface AppContextValue {
   onRefresh: () => void;
   instances: RedmineInstance[];
   activeInstanceId: string;
+  instanceColorMap: Record<string, string>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

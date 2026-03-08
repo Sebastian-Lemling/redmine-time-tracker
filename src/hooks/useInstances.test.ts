@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import { useInstances } from "@/hooks/useInstances";
+import { useInstances, INSTANCE_COLORS } from "@/hooks/useInstances";
 import type { RedmineInstance } from "@/types/redmine";
 
 vi.mock("@/lib/api");
@@ -100,6 +100,31 @@ describe("useInstances", () => {
     });
 
     expect(result.current.instances[0].name).toBe("Production");
+  });
+
+  it("instanceColorMap assigns colors by index with cycling", async () => {
+    const many: RedmineInstance[] = INSTANCE_COLORS.map((_, i) => ({
+      id: `inst-${i}`,
+      name: `Instance ${i}`,
+      url: `https://r${i}.test`,
+      order: i,
+    }));
+    many.push({
+      id: "wrap",
+      name: "Wrap",
+      url: "https://wrap.test",
+      order: INSTANCE_COLORS.length,
+    });
+    mockedApi.mockResolvedValueOnce(many);
+
+    const { result } = renderHook(() => useInstances());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const map = result.current.instanceColorMap;
+    INSTANCE_COLORS.forEach((color, i) => {
+      expect(map[`inst-${i}`]).toBe(color);
+    });
+    expect(map["wrap"]).toBe(INSTANCE_COLORS[0]);
   });
 
   it("reorderInstances assigns order indices and syncs", async () => {

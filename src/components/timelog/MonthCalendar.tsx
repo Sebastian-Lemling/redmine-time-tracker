@@ -12,8 +12,6 @@ interface Props {
   localMinsByDate: Record<string, number>;
   remoteMinsByDate: Record<string, number>;
   unsyncedByDate: Record<string, number>;
-  entryCountByDate: Record<string, number>;
-  heatQuartiles: number[];
   onSelectDay: (day: number, hasUnsynced: boolean, hasMins: boolean) => void;
   onNavigateMonth: (delta: number) => void;
   onGoToday: () => void;
@@ -28,23 +26,12 @@ export function MonthCalendar({
   localMinsByDate,
   remoteMinsByDate,
   unsyncedByDate,
-  entryCountByDate,
-  heatQuartiles,
   onSelectDay,
   onNavigateMonth,
   onGoToday,
 }: Props) {
   const { t } = useI18n();
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
-
-  const getHeatLevel = (dateKey: string): number => {
-    const count = entryCountByDate[dateKey] || 0;
-    if (count <= 0) return 0;
-    if (count <= heatQuartiles[0]) return 1;
-    if (count <= heatQuartiles[1]) return 2;
-    if (count <= heatQuartiles[2]) return 3;
-    return 4;
-  };
 
   return (
     <div className="cal-layout__calendar">
@@ -94,13 +81,11 @@ export function MonthCalendar({
               const localMins = localMinsByDate[dk] || 0;
               const remoteMins = remoteMinsByDate[dk] || 0;
               const hasUnsynced = (unsyncedByDate[dk] || 0) > 0;
-              const heatLevel = getHeatLevel(dk);
 
               const cn = [
                 "cal-cell",
-                isWeekend && heatLevel === 0 && "cal-cell--weekend",
+                isWeekend && "cal-cell--weekend",
                 isSelected && "cal-cell--selected",
-                !isSelected && heatLevel > 0 && `cal-cell--heat-${heatLevel}`,
               ]
                 .filter(Boolean)
                 .join(" ");
@@ -128,10 +113,10 @@ export function MonthCalendar({
                   {mins > 0 && (
                     <div className="cal-bar">
                       {remoteMins > 0 && (
-                        <div className="cal-bar__remote" style={{ width: `${remotePct}%` }} />
+                        <div className="cal-bar__synced" style={{ width: `${remotePct}%` }} />
                       )}
                       {localMins > 0 && (
-                        <div className="cal-bar__local" style={{ width: `${localPct}%` }} />
+                        <div className="cal-bar__draft" style={{ width: `${localPct}%` }} />
                       )}
                     </div>
                   )}

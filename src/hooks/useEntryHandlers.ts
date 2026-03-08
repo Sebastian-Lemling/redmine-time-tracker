@@ -67,7 +67,13 @@ export function useEntryHandlers(deps: Deps) {
   const handleEdit = useCallback(
     async (
       id: string,
-      updates: { description: string; duration: number; date: string; activityId?: number },
+      updates: {
+        description: string;
+        duration: number;
+        date: string;
+        activityId?: number;
+        activityName?: string;
+      },
     ) => {
       try {
         const entry = entries.find((e) => e.id === id);
