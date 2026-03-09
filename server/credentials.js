@@ -230,21 +230,23 @@ export function sanitize(message) {
 
 export function loadInstances() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+
+  // Env vars are the source of truth — always re-discover when present
+  const discovered = discoverInstancesFromEnv();
+  if (discovered.length > 0) {
+    saveInstances(discovered);
+    return discovered;
+  }
+
+  // Fall back to instances.json (local setup with OS keystore)
   if (existsSync(INSTANCES_FILE)) {
     try {
       const raw = readFileSync(INSTANCES_FILE, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch {
-      /* fall through to migration */
+      /* corrupted file — ignore */
     }
-  }
-
-  // Auto-discover instances from env vars and .env file
-  const instances = discoverInstancesFromEnv();
-  if (instances.length > 0) {
-    saveInstances(instances);
-    return instances;
   }
 
   return [];
