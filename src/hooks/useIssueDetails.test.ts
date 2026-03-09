@@ -60,7 +60,7 @@ describe("useIssueDetails", () => {
       await act(async () => {
         await result.current.fetchIssueDescription(50);
       });
-      expect(mockApi).toHaveBeenCalledWith("/api/issues/50?include=journals");
+      expect(mockApi).toHaveBeenCalledWith("/api/issues/50?include=journals,attachments");
       expect(result.current.issueDescriptions[50]).toBe("A detailed description");
     });
 

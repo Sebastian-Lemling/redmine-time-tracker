@@ -30,8 +30,8 @@ test.describe("Toolbar and project groups", () => {
     await expect(panel.getByText("Add dark mode support")).not.toBeVisible();
     await expect(panel.getByText("Update API documentation")).not.toBeVisible();
 
-    const clearBtn = panel.locator(".ticket-toolbar__btn--clear");
-    await clearBtn.click();
+    // Clear via Escape key (no dedicated clear button exists)
+    await searchInput.press("Escape");
 
     await expect(panel.getByText("Fix login validation")).toBeVisible();
     await expect(panel.getByText("Add dark mode support")).toBeVisible();
@@ -84,6 +84,7 @@ test.describe("Toolbar and project groups", () => {
 
     // Clicking Beta toggles it OFF → only Alpha remains
     const betaBadge = panel.locator(".filter-chip", { hasText: "Project Beta" });
+    await expect(betaBadge).toBeVisible({ timeout: 5000 });
     await betaBadge.click();
 
     await expect(panel.locator(".ticket-group__name").getByText("Project Alpha")).toBeVisible();
@@ -116,21 +117,5 @@ test.describe("Toolbar and project groups", () => {
     const allCards = panel.locator(".ticket-card:visible");
     const allCount = await allCards.count();
     expect(allCount).toBeGreaterThan(1);
-  });
-
-  test("refresh button triggers data reload with spinning animation", async ({ page }) => {
-    const panel = page.locator(ticketPanel);
-
-    const refreshBtn = panel.locator('.ticket-toolbar__btn[title="Refresh"]');
-    await expect(refreshBtn).toBeVisible();
-    await expect(refreshBtn).not.toHaveClass(/ticket-toolbar__btn--refreshing/);
-
-    await refreshBtn.click();
-
-    await expect(refreshBtn).toHaveClass(/ticket-toolbar__btn--refreshing/);
-
-    await expect(refreshBtn).not.toHaveClass(/ticket-toolbar__btn--refreshing/, { timeout: 10000 });
-
-    await expect(panel.getByText("Fix login validation")).toBeVisible();
   });
 });

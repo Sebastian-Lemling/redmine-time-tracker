@@ -13,16 +13,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          icons: ["lucide-react"],
-          vendor: [
-            "motion",
-            "react-markdown",
-            "clsx",
-            "@dnd-kit/core",
-            "@dnd-kit/sortable",
-            "@dnd-kit/utilities",
-          ],
+        manualChunks(id) {
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("highlight.js") || id.includes("rehype-highlight")) return "highlight";
+          if (
+            id.includes("@tiptap/") ||
+            id.includes("prosemirror") ||
+            id.includes("turndown") ||
+            id.includes("marked") ||
+            id.includes("react-markdown")
+          )
+            return "editor";
+          if (id.includes("motion") || id.includes("clsx") || id.includes("@dnd-kit/"))
+            return "vendor";
         },
       },
     },

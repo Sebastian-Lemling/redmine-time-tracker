@@ -38,13 +38,12 @@ interface Props {
   onDiscard: (issueId: number) => void;
   onAdjust: (issueId: number, deltaSec: number) => void;
   onOpenBookDialog: () => void;
-  issueDescription?: string;
   issueComments?: RedmineJournal[];
-  onFetchIssueDescription: (issueId: number) => void;
   projectColor?: string;
   isPinned?: boolean;
   onTogglePin?: (issue: RedmineIssue) => void;
   isFavoriteCard?: boolean;
+  onOpenConversation?: (issueId: number, tab?: "description" | "comments") => void;
 }
 
 export const TicketCard = React.memo(function TicketCard({
@@ -72,13 +71,12 @@ export const TicketCard = React.memo(function TicketCard({
   onDiscard,
   onAdjust,
   onOpenBookDialog,
-  issueDescription,
   issueComments,
-  onFetchIssueDescription,
   projectColor,
   isPinned,
   onTogglePin,
   isFavoriteCard,
+  onOpenConversation,
 }: Props) {
   useEffect(() => {
     onFetchVersions(issue.project.id);
@@ -114,9 +112,8 @@ export const TicketCard = React.memo(function TicketCard({
 
       <TicketCardDescription
         issue={issue}
-        issueDescription={issueDescription}
         issueComments={issueComments}
-        onFetchIssueDescription={onFetchIssueDescription}
+        onOpenConversation={onOpenConversation}
       />
 
       <TimerControls

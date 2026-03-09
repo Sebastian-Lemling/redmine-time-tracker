@@ -71,11 +71,29 @@ export interface RedmineTimeEntry {
   instanceName?: string;
 }
 
+export interface RedmineAttachment {
+  id: number;
+  filename: string;
+  content_url: string;
+  content_type: string;
+  filesize?: number;
+  author?: { id: number; name: string };
+  created_on?: string;
+}
+
+export interface RedmineJournalDetail {
+  property: string;
+  name: string;
+  old_value?: string | null;
+  new_value?: string | null;
+}
+
 export interface RedmineJournal {
   id: number;
   user: { id: number; name: string };
   notes: string;
   created_on: string;
+  details?: RedmineJournalDetail[];
 }
 
 export interface RedmineActivity {

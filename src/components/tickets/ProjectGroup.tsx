@@ -48,9 +48,8 @@ export interface GroupProps {
   onDiscard: (issueId: number) => void;
   onAdjust: (issueId: number, deltaSec: number) => void;
   onOpenBookDialog: (issue: RedmineIssue) => void;
-  issueDescriptions: Record<number, string>;
   issueComments: Record<number, RedmineJournal[]>;
-  onFetchIssueDescription: (issueId: number) => void;
+  onOpenConversation?: (issueId: number, tab?: "description" | "comments") => void;
   dragHandleProps?: ReturnType<typeof useSortable>["listeners"];
   pinnedIds?: Set<number>;
   onTogglePin?: (issue: RedmineIssue) => void;
@@ -91,9 +90,8 @@ function ProjectGroupContent({
   onDiscard,
   onAdjust,
   onOpenBookDialog,
-  issueDescriptions,
   issueComments,
-  onFetchIssueDescription,
+  onOpenConversation,
   dragHandleProps,
   pinnedIds,
   onTogglePin,
@@ -161,9 +159,8 @@ function ProjectGroupContent({
                 onDiscard={onDiscard}
                 onAdjust={onAdjust}
                 onOpenBookDialog={() => onOpenBookDialog(issue)}
-                issueDescription={issueDescriptions[issue.id]}
                 issueComments={issueComments[issue.id]}
-                onFetchIssueDescription={onFetchIssueDescription}
+                onOpenConversation={onOpenConversation}
                 isPinned={pinnedIds?.has(issue.id)}
                 onTogglePin={onTogglePin}
                 isFavoriteCard={showFavoritesGroup}

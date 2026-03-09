@@ -254,6 +254,7 @@ export function SearchPanel({
                               role="option"
                               aria-selected={false}
                               className="search-panel__recent-item"
+                              tabIndex={-1}
                               onClick={() => search.applyRecentSearch(query)}
                             >
                               <Search size={15} aria-hidden="true" />

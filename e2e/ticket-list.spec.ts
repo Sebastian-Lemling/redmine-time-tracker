@@ -86,8 +86,8 @@ test.describe("Ticket list", () => {
     await searchInput.fill("login");
     await page.waitForTimeout(500);
 
-    const pinCheckbox = searchPanel.locator('input[aria-label="Pin issue #101"]');
-    await pinCheckbox.click();
+    const pinBtn = searchPanel.locator('button[aria-label="Pin issue #101"]');
+    await pinBtn.click();
 
     // Issue reappears in the pinned ticket list
     await expect(panel.getByText("Fix login validation")).toBeVisible();

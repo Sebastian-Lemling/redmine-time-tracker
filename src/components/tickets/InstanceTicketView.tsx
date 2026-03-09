@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useRef } from "react";
+import { useCallback, useMemo, useEffect, useRef, useState } from "react";
 import type { RedmineIssue, MultiTimerMap, ActiveTimerKey, TimerKey } from "../../types/redmine";
 import { parseTimerKey, timerKey } from "../../types/redmine";
 import { useRedmine } from "../../hooks/useRedmine";
@@ -9,6 +9,7 @@ import { useTimerHandlers } from "../../hooks/useTimerHandlers";
 import { useVisibilityRefresh } from "../../hooks/useVisibilityRefresh";
 import { useI18n } from "../../i18n/I18nContext";
 import { ErrorBoundary } from "../ui";
+import { ConversationDialog } from "../dialogs";
 import { TicketList } from "./TicketList";
 import { SearchPanel } from "./SearchPanel";
 import type { SaveResult } from "../../hooks/useMultiTimer";
@@ -79,6 +80,13 @@ export function InstanceTicketView({
     pinned.syncAssignedPins(redmine.issues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [redmine.issues]);
+
+  useEffect(() => {
+    if (mergedIssues.length > 0) {
+      redmine.prefetchIssueDetails(mergedIssues.map((i) => i.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergedIssues]);
 
   const instanceActiveId = useMemo(() => {
     if (!activeTimerKey) return null;
@@ -163,6 +171,65 @@ export function InstanceTicketView({
     refreshRemoteEntries: redmine.refreshRemoteEntries,
     refreshWeekRemoteEntries: () => {},
   });
+
+  const fieldNameMap = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    map.status_id = {};
+    for (const s of redmine.statuses) map.status_id[String(s.id)] = s.name;
+    map.tracker_id = {};
+    for (const tr of redmine.trackers) map.tracker_id[String(tr.id)] = tr.name;
+    map.assigned_to_id = {};
+    for (const members of Object.values(redmine.membersByProject)) {
+      for (const m of members) map.assigned_to_id[String(m.id)] = m.name;
+    }
+    map.fixed_version_id = {};
+    for (const versions of Object.values(redmine.versionsByProject)) {
+      for (const v of versions) map.fixed_version_id[String(v.id)] = v.name;
+    }
+    map.priority_id = {};
+    for (const issue of allKnownIssues) {
+      map.priority_id[String(issue.priority.id)] = issue.priority.name;
+      if (issue.assigned_to) {
+        map.assigned_to_id[String(issue.assigned_to.id)] = issue.assigned_to.name;
+      }
+    }
+    return map;
+  }, [
+    redmine.statuses,
+    redmine.trackers,
+    redmine.membersByProject,
+    redmine.versionsByProject,
+    allKnownIssues,
+  ]);
+
+  const [conversationState, setConversationState] = useState<{
+    issueId: number;
+    tab: "description" | "comments";
+  } | null>(null);
+
+  const handleOpenConversation = useCallback(
+    (issueId: number, tab?: "description" | "comments") => {
+      setConversationState({ issueId, tab: tab ?? "comments" });
+      redmine.fetchIssueDescription(issueId);
+      const issue = allKnownIssues.find((i) => i.id === issueId);
+      if (issue?.project?.id) {
+        redmine.fetchProjectMembers(issue.project.id);
+        redmine.fetchProjectVersions(issue.project.id);
+      }
+    },
+    [redmine, allKnownIssues],
+  );
+
+  const handleCloseConversation = useCallback(() => {
+    setConversationState(null);
+  }, []);
+
+  const handleRefreshConversation = useCallback(
+    (issueId: number) => {
+      redmine.fetchIssueDescription(issueId);
+    },
+    [redmine],
+  );
 
   const mutations = useIssueMutationHandlers({
     mergedIssues: allKnownIssues,
@@ -254,9 +321,8 @@ export function InstanceTicketView({
             onDiscard={onDiscard}
             onAdjust={onAdjust}
             onOpenBookDialog={timerHandlers.handleOpenBookDialog}
-            issueDescriptions={redmine.issueDescriptions}
             issueComments={redmine.issueComments}
-            onFetchIssueDescription={redmine.fetchIssueDescription}
+            onOpenConversation={handleOpenConversation}
             onTogglePin={handleTogglePin}
             favoriteIds={favorites.favoriteIds}
             favoriteIssues={favorites.favoriteIssues}
@@ -289,6 +355,35 @@ export function InstanceTicketView({
           />
         </ErrorBoundary>
       </div>
+      {conversationState != null &&
+        (() => {
+          const { issueId: convId, tab: convTab } = conversationState;
+          const issue = allKnownIssues.find((i) => i.id === convId);
+          const subject = issue?.subject ?? redmine.issueSubjects[convId] ?? "";
+          const desc = redmine.issueDescriptions[convId];
+          const cmts = redmine.issueComments[convId] ?? [];
+          const atts = redmine.issueAttachments[convId] ?? [];
+          return (
+            <ConversationDialog
+              instanceId={instanceId}
+              issueId={convId}
+              issueSubject={subject}
+              issue={issue}
+              description={desc}
+              comments={cmts}
+              attachments={atts}
+              redmineUrl={redmine.redmineUrl}
+              fieldNameMap={fieldNameMap}
+              initialTab={convTab}
+              currentUserId={redmine.user?.id}
+              onUpdateDescription={redmine.updateDescription}
+              onPostComment={redmine.postComment}
+              onUpdateComment={redmine.updateComment}
+              onRefresh={handleRefreshConversation}
+              onClose={handleCloseConversation}
+            />
+          );
+        })()}
     </>
   );
 }

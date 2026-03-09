@@ -51,13 +51,13 @@ test.describe("Issue mutations", () => {
     await expect(card.locator(".chip-menu__trigger", { hasText: "Feature" }).first()).toBeVisible();
   });
 
-  test("change done ratio via ProgressRing", async ({ page }) => {
+  test("change done ratio via ChipMenu", async ({ page }) => {
     const card = page
       .locator(ticketPanel)
       .locator(".ticket-card", { hasText: "Fix login validation" });
-    const ring = card.locator(".progress-ring");
-    await expect(ring).toHaveAttribute("title", "30%");
-    await ring.click();
+    const doneChip = card.locator(".chip-menu__trigger", { hasText: "30%" });
+    await expect(doneChip).toBeVisible();
+    await doneChip.click();
 
     const listbox = page.locator('[role="listbox"]');
     await expect(listbox).toBeVisible();
@@ -66,14 +66,14 @@ test.describe("Issue mutations", () => {
     const snackbar = page.locator('[role="status"][aria-live="polite"]');
     await expect(snackbar).toContainText("50%", { timeout: 10000 });
 
-    await expect(ring).toHaveAttribute("title", "50%");
+    await expect(card.locator(".chip-menu__trigger", { hasText: "50%" })).toBeVisible();
   });
 
   test("assignee menu shows members and closes on selection", async ({ page }) => {
     const card = page
       .locator(ticketPanel)
       .locator(".ticket-card", { hasText: "Fix login validation" });
-    const assigneeTrigger = card.locator(".assignee-menu__trigger");
+    const assigneeTrigger = card.locator(".chip-menu__trigger", { hasText: "Test User" });
     await assigneeTrigger.click();
 
     const listbox = page.locator('[role="listbox"]');

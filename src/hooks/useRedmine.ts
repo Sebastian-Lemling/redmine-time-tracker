@@ -52,8 +52,13 @@ export function useRedmine(instanceId?: string) {
       issueSubjects: issueDetails.issueSubjects,
       issueDescriptions: issueDetails.issueDescriptions,
       issueComments: issueDetails.issueComments,
+      issueAttachments: issueDetails.issueAttachments,
       fetchIssueSubject: issueDetails.fetchIssueSubject,
       fetchIssueDescription: issueDetails.fetchIssueDescription,
+      prefetchIssueDetails: issueDetails.prefetchIssueDetails,
+      updateDescription: issueDetails.updateDescription,
+      postComment: issueDetails.postComment,
+      updateComment: issueDetails.updateComment,
 
       remoteEntries: remoteEntries.remoteEntries,
       remoteLoading: remoteEntries.remoteLoading,

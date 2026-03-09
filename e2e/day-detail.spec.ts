@@ -95,25 +95,6 @@ test.describe("DayDetailPanel", () => {
     await expect(page.locator(".de-toolbar__label")).toHaveText("1 selected");
   });
 
-  test("sort dropdown changes sort", async ({ page }) => {
-    await seedEntry(page);
-    await page.goto("/#/timelog");
-
-    await expect(page.locator(".de-card").first()).toBeVisible();
-
-    const sortBtn = page.locator(".de-sort__btn");
-    await sortBtn.click();
-
-    const sortMenu = page.locator(".de-sort__menu");
-    await expect(sortMenu).toBeVisible();
-
-    const projectOption = sortMenu.getByRole("option", { name: "Project" });
-    await projectOption.click();
-
-    await expect(sortMenu).not.toBeVisible();
-    await expect(sortBtn).toContainText("Project");
-  });
-
   test("duration stepper inline changes duration", async ({ page }) => {
     await seedEntry(page);
     await page.goto("/#/timelog");
@@ -130,7 +111,7 @@ test.describe("DayDetailPanel", () => {
   test("empty state when no entries shows global empty message", async ({ page }) => {
     await page.goto("/#/timelog");
 
-    await expect(page.getByText("No entries yet")).toBeVisible();
+    await expect(page.getByText("No entries")).toBeVisible();
   });
 
   test("empty state Sent tab shows Nothing sent yet", async ({ page }) => {

@@ -512,7 +512,9 @@ describe("useIssueDetails — multi-instance routing", () => {
       await result.current.fetchIssueDescription(101);
     });
 
-    expect(mockApi).toHaveBeenCalledWith(`/api/i/${INST_SUPPORT}/issues/101?include=journals`);
+    expect(mockApi).toHaveBeenCalledWith(
+      `/api/i/${INST_SUPPORT}/issues/101?include=journals,attachments`,
+    );
     expect(result.current.issueDescriptions[101]).toBe("A bug");
     expect(result.current.issueComments[101]).toHaveLength(1);
     expect(result.current.issueComments[101][0].notes).toBe("Fixed in v2");
@@ -1325,13 +1327,15 @@ describe("Catch-all backward-compat routes (/api/* without instanceId)", () => {
     expect(mockApi).toHaveBeenCalledWith("/api/issues/200");
   });
 
-  it("useIssueDetails(/api/issues/:id?include=journals) — fetchIssueDescription", async () => {
-    mockApi.mockResolvedValueOnce({ issue: { id: 200, description: "d", journals: [] } });
+  it("useIssueDetails(/api/issues/:id?include=journals,attachments) — fetchIssueDescription", async () => {
+    mockApi.mockResolvedValueOnce({
+      issue: { id: 200, description: "d", journals: [], attachments: [] },
+    });
     const { result } = renderHook(() => useIssueDetails());
     await act(async () => {
       await result.current.fetchIssueDescription(200);
     });
-    expect(mockApi).toHaveBeenCalledWith("/api/issues/200?include=journals");
+    expect(mockApi).toHaveBeenCalledWith("/api/issues/200?include=journals,attachments");
   });
 
   it("useProjectData(/api/projects/:id/members) — fetchProjectMembers", async () => {

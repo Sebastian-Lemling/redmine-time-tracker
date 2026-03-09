@@ -1,0 +1,1213 @@
+/* ============================================================================
+   CONVERSATION DIALOG — Full-height dialog for issue description + comments
+   ============================================================================ */
+
+.conv-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  animation: conv-fade-in 150ms ease-out;
+}
+
+@keyframes conv-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.conv-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 840px;
+  height: calc(100vh - 32px);
+  max-height: none;
+  margin: 16px;
+  border-radius: 16px;
+  background: var(--color-surface-container-low);
+  box-shadow: var(
+    --md-elevation-3,
+    0 4px 8px 3px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.3)
+  );
+  overflow: hidden;
+  animation: conv-slide-up 200ms var(--md-motion-easing-decelerate, cubic-bezier(0, 0, 0, 1));
+}
+
+@keyframes conv-slide-up {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* --- Header --- */
+.conv-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 12px 8px 12px 20px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  flex-shrink: 0;
+}
+
+.conv-dialog__issue-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin: -4px 0;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+  flex-shrink: 0;
+}
+.conv-dialog__issue-link:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+.conv-dialog__issue-link:active {
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.conv-dialog__issue-id {
+  font: inherit;
+  color: inherit;
+}
+
+.conv-dialog__issue-link-icon {
+  opacity: 0;
+  transition: opacity 150ms ease;
+  flex-shrink: 0;
+}
+.conv-dialog__issue-link:hover .conv-dialog__issue-link-icon {
+  opacity: 0.7;
+}
+
+.conv-dialog__header-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--color-outline-variant);
+  margin: 0 10px;
+  flex-shrink: 0;
+}
+
+.conv-dialog__issue-subject {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.conv-dialog__close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 8px;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.conv-dialog__close:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  color: var(--color-on-surface);
+}
+
+/* --- Tabs --- */
+.conv-dialog__tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  flex-shrink: 0;
+}
+
+.conv-dialog__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease;
+}
+.conv-dialog__tab:hover {
+  color: var(--color-on-surface);
+}
+.conv-dialog__tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Copy button — right-aligned in tab bar */
+.conv-dialog__copy-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  opacity: 0.6;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    opacity 120ms ease;
+  flex-shrink: 0;
+  align-self: center;
+}
+.conv-dialog__copy-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.conv-dialog__copy-btn--copied {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+.conv-dialog__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+/* --- Tab body (fills remaining space) --- */
+.conv-dialog__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Description tab --- */
+.conv-dialog__description {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* --- Issue metadata --- */
+.conv-dialog__meta {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Chips row for primary fields (tracker, status, priority, version) */
+.conv-dialog__meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.conv-dialog__meta-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: var(--color-surface-container-high);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.conv-dialog__meta-chip--primary {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+/* Detail grid */
+.conv-dialog__meta-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--color-surface-container-high);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.conv-dialog__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+.conv-dialog__meta-row + .conv-dialog__meta-row {
+  border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+}
+
+.conv-dialog__meta-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--color-on-surface-variant);
+  white-space: nowrap;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.conv-dialog__meta-value {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-on-surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.conv-dialog__meta-value--mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.conv-dialog__meta-value--overdue {
+  color: var(--color-error);
+  font-weight: 500;
+}
+
+.conv-dialog__meta-sep {
+  color: var(--color-on-surface-variant);
+  opacity: 0.4;
+}
+
+.conv-dialog__meta-est {
+  color: var(--color-on-surface-variant);
+}
+
+.conv-dialog__meta-pct {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface-variant);
+  min-width: 28px;
+}
+
+.conv-dialog__meta-progress {
+  display: inline-block;
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.conv-dialog__meta-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-primary);
+  transition: width 200ms ease;
+}
+
+.conv-dialog__meta-progress-bar--done {
+  background: var(--color-success);
+}
+
+/* Dates row — compact secondary info */
+.conv-dialog__meta-row--dates {
+  padding: 8px 16px;
+  gap: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 60%, transparent);
+}
+
+.conv-dialog__meta-date {
+  font-size: 11px;
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+}
+
+/* --- Attachments --- */
+.conv-dialog__attachments {
+  flex-shrink: 0;
+}
+
+.conv-dialog__attachments-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.conv-dialog__attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conv-dialog__attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--color-on-surface);
+  transition: background 120ms ease;
+}
+.conv-dialog__attachment:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 6%, transparent);
+}
+
+.conv-dialog__attachment-icon {
+  flex-shrink: 0;
+  color: var(--color-on-surface-variant);
+  opacity: 0.6;
+}
+
+.conv-dialog__attachment-name {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.conv-dialog__attachment-size {
+  font-size: 11px;
+  color: var(--color-on-surface-variant);
+  opacity: 0.6;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.conv-dialog__edit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--color-surface-container);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  border-radius: 8px;
+  opacity: 0.7;
+  transition:
+    background 150ms ease,
+    opacity 150ms ease,
+    color 150ms ease;
+}
+.conv-dialog__edit-btn:hover {
+  opacity: 1;
+  background: var(--color-surface-container-highest);
+  color: var(--color-primary);
+}
+
+.conv-dialog__description-body {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  background: var(--color-surface-container-high);
+  border-radius: 4px 16px 16px 16px;
+  padding: 14px 18px;
+  padding-right: 46px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--color-on-surface);
+}
+.conv-dialog__description-body p:first-child {
+  margin-top: 0;
+}
+.conv-dialog__description-body p:last-child {
+  margin-bottom: 0;
+}
+.conv-dialog__description-body .md-viewer .tiptap {
+  padding: 0;
+}
+
+.conv-dialog__description-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+.conv-dialog__description-edit .md-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+}
+/* EditorContent wrapper div + ProseMirror div both need to fill space */
+.conv-dialog__description-edit .md-editor > div:not(.md-editor__toolbar) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.conv-dialog__description-edit .md-editor .tiptap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.conv-dialog__description-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.conv-dialog__no-content-wrap {
+  position: relative;
+}
+
+.conv-dialog__no-content {
+  font-size: 13px;
+  color: var(--color-on-surface-variant);
+  font-style: italic;
+  margin: 0;
+  background: color-mix(in srgb, var(--color-surface-container) 30%, transparent);
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+/* --- Comments tab (timeline) --- */
+.conv-dialog__timeline {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+/* ============================================================================
+   COMMENT ITEMS — Chat-bubble style with avatars
+   ============================================================================ */
+
+/* --- Full comment (avatar + bubble) --- */
+.conv-comment {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+}
+.conv-comment + .conv-comment {
+  border-top: 1px solid color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+}
+.conv-comment--activity + .conv-comment,
+.conv-comment + .conv-comment--activity,
+.conv-comment--grouped {
+  border-top: none;
+}
+
+/* Grouped (consecutive same author) */
+.conv-comment--grouped {
+  padding-top: 0;
+}
+
+.conv-comment__avatar-spacer {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.conv-comment__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  user-select: none;
+  margin-top: 2px;
+}
+
+.conv-comment__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conv-comment__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.conv-comment__author {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  line-height: 1.2;
+}
+
+.conv-comment__time {
+  font-size: 11px;
+  color: var(--color-on-surface-variant);
+  opacity: 0.6;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.conv-comment__body {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--color-on-surface);
+  background: var(--color-surface-container-high);
+  border-radius: 4px 16px 16px 16px;
+  padding: 10px 14px;
+}
+.conv-comment__body .md-viewer .tiptap {
+  padding: 0;
+}
+.conv-comment__body p:first-child {
+  margin-top: 0;
+}
+.conv-comment__body p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Inline comment editing --- */
+.conv-comment__body--editable {
+  position: relative;
+}
+.conv-comment__edit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  border-radius: 6px;
+  background: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+.conv-comment__body--editable:hover .conv-comment__edit-btn {
+  opacity: 0.7;
+}
+.conv-comment__edit-btn:hover {
+  opacity: 1 !important;
+  background: var(--color-surface-container-highest);
+  color: var(--color-primary);
+}
+
+.conv-comment__edit-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.conv-comment__edit-wrap .md-editor {
+  border-radius: 10px;
+}
+
+.conv-comment__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.conv-dialog__error-toast {
+  padding: 8px 14px;
+  margin: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--color-error, #d93025) 12%, transparent);
+  color: var(--color-error, #d93025);
+  animation: conv-fade-in 150ms ease-out;
+  flex-shrink: 0;
+}
+
+/* --- Loading state --- */
+.conv-dialog__loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-on-surface-variant);
+  opacity: 0.5;
+}
+
+/* --- Keyboard shortcut hints --- */
+.conv-dialog__kbd-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+.conv-dialog__kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  color: var(--color-on-surface-variant);
+  line-height: 1;
+}
+.conv-dialog__btn--filled .conv-dialog__kbd {
+  background: color-mix(in srgb, var(--color-on-primary) 20%, transparent);
+  color: var(--color-on-primary);
+}
+
+/* Inline timestamp for grouped messages */
+.conv-comment__time--inline {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10px;
+  opacity: 0.4;
+}
+
+/* --- Property change chips --- */
+.conv-comment__changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.conv-comment__change-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+
+.conv-comment__change-value {
+  font-weight: 400;
+  color: var(--color-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Activity-only entries (no notes, just property changes) --- */
+.conv-comment--activity {
+  padding: 2px 0;
+  gap: 0;
+  border-top: none !important;
+}
+
+.conv-comment__activity-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface-container) 70%, transparent);
+}
+
+.conv-comment__activity-author {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+}
+
+.conv-comment--activity .conv-comment__changes {
+  flex-shrink: 0;
+}
+
+.conv-comment--activity .conv-comment__change-chip {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
+  color: var(--color-on-surface-variant);
+}
+
+.conv-comment--activity .conv-comment__time {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+/* --- Input footer (always visible) --- */
+.conv-dialog__input {
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-outline-variant);
+  flex-shrink: 0;
+}
+
+.conv-dialog__input-wrap {
+  position: relative;
+}
+.conv-dialog__input-wrap .md-editor {
+  border-radius: 10px;
+}
+
+.conv-dialog__send-btn {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+.conv-dialog__send-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+.conv-dialog__send-btn:not(:disabled):hover {
+  opacity: 0.88;
+  transform: scale(1.08);
+}
+
+/* --- Buttons --- */
+.conv-dialog__btn {
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.conv-dialog__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.conv-dialog__btn--text {
+  background: transparent;
+  color: var(--color-on-surface-variant);
+}
+.conv-dialog__btn--text:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+}
+.conv-dialog__btn--filled {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.conv-dialog__btn--filled:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+/* ============================================================================
+   MARKDOWN EDITOR — TipTap WYSIWYG rich-text editor
+   ============================================================================ */
+
+.md-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 12px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+/* --- Toolbar --- */
+.md-editor__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  background: var(--color-surface-container-low);
+  flex-wrap: wrap;
+}
+
+.md-editor__toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--color-outline-variant);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.md-editor__toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  transition:
+    background 100ms ease,
+    color 100ms ease;
+  opacity: 0.7;
+}
+.md-editor__toolbar-btn:hover {
+  background: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+  color: var(--color-on-surface);
+  opacity: 1;
+}
+.md-editor__toolbar-btn--active {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  opacity: 1;
+}
+.md-editor__toolbar-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* --- TipTap shared content styles (editor + viewer) --- */
+.md-editor .tiptap,
+.md-viewer .tiptap {
+  outline: none;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--color-on-surface);
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.md-editor .tiptap {
+  padding: 10px 12px;
+  min-height: 80px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.md-editor .tiptap p,
+.md-viewer .tiptap p {
+  margin: 0 0 0.75em;
+}
+.md-editor .tiptap p:last-child,
+.md-viewer .tiptap p:last-child {
+  margin-bottom: 0;
+}
+
+.md-editor .tiptap h2,
+.md-viewer .tiptap h2 {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 0.6em 0 0.3em;
+}
+.md-editor .tiptap h3,
+.md-viewer .tiptap h3 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+.md-editor .tiptap h4,
+.md-viewer .tiptap h4 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 0.5em 0 0.2em;
+}
+
+.md-editor .tiptap strong,
+.md-viewer .tiptap strong {
+  font-weight: 600;
+}
+.md-editor .tiptap em,
+.md-viewer .tiptap em {
+  font-style: italic;
+}
+.md-editor .tiptap del,
+.md-viewer .tiptap del {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.md-editor .tiptap code,
+.md-viewer .tiptap code {
+  background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.md-editor .tiptap pre,
+.md-viewer .tiptap pre {
+  background: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 0.5em 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-size: 0.82em;
+  line-height: 1.5;
+}
+.md-editor .tiptap pre code,
+.md-viewer .tiptap pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* --- Syntax highlighting (lowlight / highlight.js) --- */
+.md-viewer .tiptap pre code .hljs-keyword,
+.md-viewer .tiptap pre code .hljs-selector-tag,
+.md-viewer .tiptap pre code .hljs-built_in,
+.md-viewer .tiptap pre code .hljs-type {
+  color: #7c4dff;
+}
+.md-viewer .tiptap pre code .hljs-string,
+.md-viewer .tiptap pre code .hljs-regexp,
+.md-viewer .tiptap pre code .hljs-addition {
+  color: #0d652d;
+}
+.md-viewer .tiptap pre code .hljs-number,
+.md-viewer .tiptap pre code .hljs-literal {
+  color: #e8710a;
+}
+.md-viewer .tiptap pre code .hljs-comment,
+.md-viewer .tiptap pre code .hljs-quote,
+.md-viewer .tiptap pre code .hljs-meta {
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+  font-style: italic;
+}
+.md-viewer .tiptap pre code .hljs-title,
+.md-viewer .tiptap pre code .hljs-section {
+  color: #1a73e8;
+}
+.md-viewer .tiptap pre code .hljs-attr,
+.md-viewer .tiptap pre code .hljs-attribute {
+  color: #e8710a;
+}
+.md-viewer .tiptap pre code .hljs-variable,
+.md-viewer .tiptap pre code .hljs-template-variable,
+.md-viewer .tiptap pre code .hljs-symbol {
+  color: #d93025;
+}
+.md-viewer .tiptap pre code .hljs-deletion {
+  color: #d93025;
+  background: color-mix(in srgb, #d93025 10%, transparent);
+}
+.md-viewer .tiptap pre code .hljs-addition {
+  background: color-mix(in srgb, #0d652d 10%, transparent);
+}
+.md-viewer .tiptap pre code .hljs-tag {
+  color: var(--color-on-surface);
+}
+.md-viewer .tiptap pre code .hljs-name {
+  color: #d93025;
+}
+
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-keyword,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-selector-tag,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-built_in,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-type {
+  color: #b388ff;
+}
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-string,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-regexp,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-addition {
+  color: #81c784;
+}
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-number,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-literal {
+  color: #ffb74d;
+}
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-title,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-section {
+  color: #82b1ff;
+}
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-attr,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-attribute {
+  color: #ffb74d;
+}
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-variable,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-template-variable,
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-symbol {
+  color: #ef9a9a;
+}
+[data-theme="dark"] .md-viewer .tiptap pre code .hljs-name {
+  color: #ef9a9a;
+}
+
+.md-editor .tiptap blockquote,
+.md-viewer .tiptap blockquote {
+  border-left: 3px solid var(--color-primary);
+  margin: 0.4em 0;
+  padding-left: 12px;
+  color: var(--color-on-surface-variant);
+}
+
+.md-editor .tiptap ul,
+.md-editor .tiptap ol,
+.md-viewer .tiptap ul,
+.md-viewer .tiptap ol {
+  padding-left: 20px;
+  margin: 0.3em 0;
+}
+
+.md-editor .tiptap a,
+.md-viewer .tiptap a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* --- Code block copy button --- */
+.md-viewer__copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 50%, transparent);
+  border-radius: 6px;
+  background: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  opacity: 0.7;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    opacity 150ms ease;
+}
+.md-viewer__copy-btn:hover {
+  opacity: 1;
+  background: var(--color-surface-container-high);
+  color: var(--color-on-surface);
+}
+.md-viewer__copy-btn--copied {
+  opacity: 1;
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+/* Viewer pre needs padding-right for copy button clearance */
+.md-viewer .tiptap pre {
+  padding-right: 42px;
+}
+
+/* --- Images in viewer --- */
+.md-viewer__image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.4em 0;
+}
+
+/* Placeholder */
+.md-editor .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-on-surface-variant);
+  opacity: 0.5;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Override for input area — grows with content, caps at 40% of dialog */
+.conv-dialog__input-wrap .md-editor {
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+}
+.conv-dialog__input-wrap .md-editor .tiptap {
+  min-height: 140px;
+  max-height: 35vh;
+  overflow-y: auto;
+  padding-bottom: 36px;
+}

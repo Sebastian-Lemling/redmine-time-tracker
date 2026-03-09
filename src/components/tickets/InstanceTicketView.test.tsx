@@ -93,6 +93,7 @@ vi.mock("../../hooks/useRedmine", () => ({
     issueComments: {},
     fetchIssueSubject: vi.fn(),
     fetchIssueDescription: mockFetchIssueDescription,
+    prefetchIssueDetails: vi.fn(),
     remoteEntries: [],
     remoteLoading: false,
     fetchRemoteEntries: vi.fn(),
