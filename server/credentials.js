@@ -240,28 +240,63 @@ export function loadInstances() {
     }
   }
 
-  // Migration: check if legacy single-instance credentials exist
-  const legacyUrl = get("redmine-url");
-  const legacyKey = get("redmine-api-key");
-  if (legacyUrl && legacyKey) {
-    const instance = {
-      id: "default",
-      name: "Redmine",
-      url: legacyUrl.replace(/\/$/, ""),
-      order: 0,
-    };
-    saveInstances([instance]);
-    // Store credentials with instance suffix for consistency
-    try {
-      setForInstance("redmine-url", "default", legacyUrl.replace(/\/$/, ""));
-      setForInstance("redmine-api-key", "default", legacyKey);
-    } catch {
-      /* legacy keys still work as fallback */
-    }
-    return [instance];
+  // Auto-discover instances from env vars and .env file
+  const instances = discoverInstancesFromEnv();
+  if (instances.length > 0) {
+    saveInstances(instances);
+    return instances;
   }
 
   return [];
+}
+
+function discoverInstancesFromEnv() {
+  const dotenv = parseDotenv();
+  const allVars = { ...dotenv, ...process.env };
+  const instances = [];
+  let order = 0;
+
+  // Check legacy default instance (REDMINE_URL / REDMINE_API_KEY)
+  const defaultUrl = allVars.REDMINE_URL;
+  const defaultKey = allVars.REDMINE_API_KEY;
+  if (defaultUrl && defaultKey) {
+    instances.push({
+      id: "default",
+      name: allVars.REDMINE_NAME || "Redmine",
+      url: defaultUrl.replace(/\/$/, ""),
+      order: order++,
+    });
+  }
+
+  // Scan for additional instances (REDMINE_URL_* / REDMINE_API_KEY_*)
+  const suffixes = new Set();
+  for (const key of Object.keys(allVars)) {
+    const match = key.match(/^REDMINE_URL_(.+)$/);
+    if (match) suffixes.add(match[1]);
+  }
+
+  for (const suffix of [...suffixes].sort()) {
+    const url = allVars[`REDMINE_URL_${suffix}`];
+    const apiKey = allVars[`REDMINE_API_KEY_${suffix}`];
+    if (!url || !apiKey) continue;
+
+    const id = suffix.toLowerCase().replace(/_/g, "-");
+    const name =
+      allVars[`REDMINE_NAME_${suffix}`] ||
+      suffix
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ");
+
+    instances.push({
+      id,
+      name,
+      url: url.replace(/\/$/, ""),
+      order: order++,
+    });
+  }
+
+  return instances;
 }
 
 export function saveInstances(instances) {

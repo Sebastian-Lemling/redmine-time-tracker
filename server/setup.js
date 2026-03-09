@@ -300,16 +300,18 @@ async function setupDocker() {
     }
   }
 
-  // Build .env with all instance credentials
+  // Build .env with all instance credentials + names
   const envLines = [];
   for (const inst of collectedInstances) {
     if (inst.id === "default") {
       envLines.push(`REDMINE_URL=${inst.url}`);
       envLines.push(`REDMINE_API_KEY=${inst.apiKey}`);
+      if (inst.name !== "Redmine") envLines.push(`REDMINE_NAME=${inst.name}`);
     } else {
       const suffix = inst.id.toUpperCase().replace(/[^A-Z0-9]/g, "_");
       envLines.push(`REDMINE_URL_${suffix}=${inst.url}`);
       envLines.push(`REDMINE_API_KEY_${suffix}=${inst.apiKey}`);
+      envLines.push(`REDMINE_NAME_${suffix}=${inst.name}`);
     }
   }
   writeFileSync(ENV_FILE, envLines.join("\n") + "\n", "utf-8");
