@@ -159,8 +159,8 @@ test("recent searches appear and are clickable", async ({ page }) => {
       .filter({ hasText: "Fix login validation" }),
   ).toBeVisible({ timeout: 5000 });
 
-  // Clear text via keyboard to stay focused (fill("") can trigger blur)
-  await searchInput.press("Meta+a");
+  // Clear text via triple-click + delete to stay focused (fill("") can trigger blur)
+  await searchInput.click({ clickCount: 3 });
   await searchInput.press("Backspace");
   await page.waitForTimeout(500);
 
