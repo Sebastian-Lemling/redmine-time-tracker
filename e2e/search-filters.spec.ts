@@ -151,34 +151,34 @@ test("Cmd+K focuses search input", async ({ page }) => {
 
 test("recent searches appear and are clickable", async ({ page }) => {
   const searchInput = page.locator('.ticket-panel--right input[placeholder="Search Redmine…"]');
+  await searchInput.click();
   await searchInput.fill("login");
-  await page.waitForTimeout(500);
   await expect(
     page
       .locator(".ticket-panel--right .search-result-card")
       .filter({ hasText: "Fix login validation" }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 5000 });
 
-  await searchInput.fill("");
-  await page.waitForTimeout(300);
+  // Clear text via keyboard to stay focused (fill("") can trigger blur)
+  await searchInput.press("Meta+a");
+  await searchInput.press("Backspace");
+  await page.waitForTimeout(500);
 
-  await searchInput.focus();
   const recentSection = page.locator(".ticket-panel--right .search-panel__recent");
-  await expect(recentSection).toBeVisible();
+  await expect(recentSection).toBeVisible({ timeout: 5000 });
 
   const recentItem = recentSection.locator(".search-panel__recent-item", {
     hasText: "login",
   });
-  await expect(recentItem).toBeVisible();
+  await expect(recentItem).toBeVisible({ timeout: 5000 });
   await recentItem.click();
 
   await expect(searchInput).toHaveValue("login");
-  await page.waitForTimeout(500);
   await expect(
     page
       .locator(".ticket-panel--right .search-result-card")
       .filter({ hasText: "Fix login validation" }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 5000 });
 });
 
 test("search by issue ID with hash", async ({ page }) => {

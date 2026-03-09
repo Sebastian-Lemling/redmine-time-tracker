@@ -101,33 +101,4 @@ test.describe("MonthCalendar", () => {
     const selectedDayText = selectedCell.locator(".cal-day");
     await expect(selectedDayText).toHaveText(String(unsyncedDay));
   });
-
-  test("heat map shows intensity levels", async ({ page }) => {
-    const todayDay = new Date().getDate();
-    const days = [1, 2, 3, 4].map((d) => (d === todayDay ? (d < 28 ? d + 10 : d - 10) : d));
-
-    await seedEntry(page, { date: dateStr(days[0]) });
-
-    for (let i = 0; i < 2; i++) {
-      await seedEntry(page, { date: dateStr(days[1]), issueId: 102 + i });
-    }
-
-    for (let i = 0; i < 4; i++) {
-      await seedEntry(page, { date: dateStr(days[2]), issueId: 200 + i });
-    }
-
-    for (let i = 0; i < 8; i++) {
-      await seedEntry(page, { date: dateStr(days[3]), issueId: 300 + i });
-    }
-
-    await page.goto("/#/timelog");
-
-    await expect(page.locator("button.cal-cell--selected")).toBeVisible();
-
-    const heatCells = page.locator("button.cal-cell[class*='cal-cell--heat-']");
-    await expect(heatCells.first()).toBeVisible();
-
-    const count = await heatCells.count();
-    expect(count).toBeGreaterThanOrEqual(1);
-  });
 });

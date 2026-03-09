@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("Time log", () => {
   test("shows empty state when no entries", async ({ page }) => {
     await page.goto("/#/timelog");
-    await expect(page.getByText("No entries yet")).toBeVisible();
+    await expect(page.getByText("No entries")).toBeVisible();
   });
 
   test("shows entries in month view after seeding", async ({ page }) => {

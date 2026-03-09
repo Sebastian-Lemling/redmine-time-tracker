@@ -6,6 +6,20 @@ const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
+// Multi-instance routing: strip /api/i/:instanceId prefix → /api
+app.use((req, _res, next) => {
+  const match = req.url.match(/^\/api\/i\/[^/]+(\/.*)$/);
+  if (match) {
+    req.url = `/api${match[1]}`;
+  }
+  next();
+});
+
+// --- Instances endpoint ---
+app.get("/api/instances", (_req, res) => {
+  res.json([{ id: "default", name: "Redmine", url: "http://redmine.example.com", order: 0 }]);
+});
+
 function today() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -31,6 +45,8 @@ const ORIGINAL_ISSUES = [
     done_ratio: 30,
     description: "Login validation needs regex check",
     due_date: "2024-02-15",
+    estimated_hours: 8,
+    spent_hours: 2.5,
     updated_on: "2024-01-15T10:00:00Z",
     created_on: "2024-01-10T08:00:00Z",
     journals: [
@@ -39,6 +55,25 @@ const ORIGINAL_ISSUES = [
         user: { id: 1, name: "Test User" },
         notes: "Started working on the regex patterns",
         created_on: "2024-01-12T14:00:00Z",
+        details: [],
+      },
+    ],
+    attachments: [
+      {
+        id: 10,
+        filename: "screenshot.png",
+        filesize: 245760,
+        content_url: "http://redmine.example.com/attachments/download/10/screenshot.png",
+        author: { id: 1, name: "Test User" },
+        created_on: "2024-01-11T09:00:00Z",
+      },
+      {
+        id: 11,
+        filename: "debug.log",
+        filesize: 1024,
+        content_url: "http://redmine.example.com/attachments/download/11/debug.log",
+        author: { id: 1, name: "Test User" },
+        created_on: "2024-01-12T10:00:00Z",
       },
     ],
   },
@@ -206,16 +241,17 @@ app.get("/api/issues/search", (req, res) => {
   });
 });
 
-// --- Single issue (supports ?include=journals,allowed_statuses) ---
+// --- Single issue (supports ?include=journals,allowed_statuses,attachments) ---
 app.get("/api/issues/:id", (req, res) => {
   const issue = ISSUES.find((i) => i.id === Number(req.params.id));
   if (!issue) return res.status(404).json({ error: "Not found" });
   const include = String(req.query.include || "");
   const result = { ...issue };
   if (!include.includes("journals")) {
-    const { journals, ...rest } = result;
-    Object.assign(result, rest);
     delete result.journals;
+  }
+  if (!include.includes("attachments")) {
+    delete result.attachments;
   }
   if (include.includes("allowed_statuses")) {
     result.allowed_statuses = ALLOWED_STATUSES[issue.status.id] || STATUSES;
@@ -333,6 +369,24 @@ app.put("/api/issues/:id", (req, res) => {
   }
   issue.updated_on = new Date().toISOString();
   res.json({ ok: true });
+});
+
+// --- Update journal (edit comment) ---
+app.put("/api/journals/:id", (req, res) => {
+  const jid = Number(req.params.id);
+  for (const issue of ISSUES) {
+    const journal = issue.journals?.find((j) => j.id === jid);
+    if (journal) {
+      journal.notes = req.body.notes ?? journal.notes;
+      return res.json({ ok: true });
+    }
+  }
+  return res.status(404).json({ error: "Not found" });
+});
+
+// --- Attachment download (serve empty for tests) ---
+app.get("/api/attachments/download/:id/:filename", (_req, res) => {
+  res.status(200).send("binary-placeholder");
 });
 
 // --- Local timelog CRUD ---
